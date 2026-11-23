@@ -24,8 +24,8 @@ defineOptions({
     <div class="space-y-6">
         <Heading
             variant="small"
-            title="Appearance settings"
-            description="Update the appearance settings for your account"
+            title="Theme"
+            description="Light, dark, or follow your system. Saved in this browser."
         />
         <AppearanceTabs />
     </div>

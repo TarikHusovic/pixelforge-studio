@@ -11,13 +11,12 @@ withDefaults(defineProps<Props>(), {
 </script>
 
 <template>
-    <header :class="variant === 'small' ? '' : 'mb-8 space-y-0.5'">
+    <header :class="variant === 'small' ? 'space-y-1' : 'mb-8 space-y-1.5'">
         <h2
-            :class="
-                variant === 'small'
-                    ? 'mb-0.5 text-base font-medium'
-                    : 'text-xl font-semibold tracking-tight'
-            "
+            :class="[
+                'font-display leading-tight',
+                variant === 'small' ? 'text-lg' : 'text-2xl sm:text-3xl',
+            ]"
         >
             {{ title }}
         </h2>

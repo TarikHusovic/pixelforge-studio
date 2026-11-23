@@ -19,17 +19,18 @@ defineProps<Props>();
 
 <template>
     <Breadcrumb>
-        <BreadcrumbList>
+        <BreadcrumbList class="flex-nowrap">
             <template v-for="(item, index) in breadcrumbs" :key="index">
-                <BreadcrumbItem>
-                    <template v-if="index === breadcrumbs.length - 1">
-                        <BreadcrumbPage>{{ item.title }}</BreadcrumbPage>
-                    </template>
-                    <template v-else>
-                        <BreadcrumbLink as-child>
-                            <Link :href="item.href">{{ item.title }}</Link>
-                        </BreadcrumbLink>
-                    </template>
+                <BreadcrumbItem class="min-w-0">
+                    <BreadcrumbPage
+                        v-if="index === breadcrumbs.length - 1"
+                        class="truncate font-medium"
+                    >
+                        {{ item.title }}
+                    </BreadcrumbPage>
+                    <BreadcrumbLink v-else as-child class="truncate">
+                        <Link :href="item.href">{{ item.title }}</Link>
+                    </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator v-if="index !== breadcrumbs.length - 1" />
             </template>

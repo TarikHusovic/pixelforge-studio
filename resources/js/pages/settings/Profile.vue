@@ -34,7 +34,7 @@ const user = computed(() => page.props.auth.user);
         <Heading
             variant="small"
             title="Profile"
-            description="Update your name and email address"
+            description="Your name and the email you log in with."
         />
 
         <Form
@@ -46,14 +46,13 @@ const user = computed(() => page.props.auth.user);
                 <Label for="name">Name</Label>
                 <Input
                     id="name"
-                    class="mt-1 block w-full"
                     name="name"
                     :default-value="user.name"
                     required
                     autocomplete="name"
                     placeholder="Full name"
                 />
-                <InputError class="mt-2" :message="errors.name" />
+                <InputError :message="errors.name" />
             </div>
 
             <div class="grid gap-2">
@@ -61,14 +60,13 @@ const user = computed(() => page.props.auth.user);
                 <Input
                     id="email"
                     type="email"
-                    class="mt-1 block w-full"
                     name="email"
                     :default-value="user.email"
                     required
                     autocomplete="username"
                     placeholder="Email address"
                 />
-                <InputError class="mt-2" :message="errors.email" />
+                <InputError :message="errors.email" />
             </div>
 
             <div class="flex items-center gap-4">

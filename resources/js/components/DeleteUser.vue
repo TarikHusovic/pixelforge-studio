@@ -26,7 +26,7 @@ const passwordInput = useTemplateRef('passwordInput');
         <Heading
             variant="small"
             title="Delete account"
-            description="Delete your account and all of its resources"
+            description="Close your account for good."
         />
         <div
             class="space-y-4 rounded-lg border border-red-100 bg-red-50 p-4 dark:border-red-200/10 dark:bg-red-700/10"
@@ -34,7 +34,8 @@ const passwordInput = useTemplateRef('passwordInput');
             <div class="relative space-y-0.5 text-red-600 dark:text-red-100">
                 <p class="font-medium">Warning</p>
                 <p class="text-sm">
-                    Please proceed with caution, this cannot be undone.
+                    This can't be undone. Unused credits are lost, and your
+                    generations stay in our billing records.
                 </p>
             </div>
             <Dialog>
@@ -60,11 +61,10 @@ const passwordInput = useTemplateRef('passwordInput');
                                 account?</DialogTitle
                             >
                             <DialogDescription>
-                                Once your account is deleted, all of its
-                                resources and data will also be permanently
-                                deleted. Please enter your password to confirm
-                                you would like to permanently delete your
-                                account.
+                                You won't be able to log in again and unused
+                                credits are lost. Your past generations stay in
+                                our billing records, as they do in Pixelforge's.
+                                Enter your password to confirm.
                             </DialogDescription>
                         </DialogHeader>
 

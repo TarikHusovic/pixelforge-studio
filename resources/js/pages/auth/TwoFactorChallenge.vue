@@ -20,16 +20,15 @@ const authConfigContent = computed<TwoFactorConfigContent>(() => {
         return {
             title: 'Recovery code',
             description:
-                'Please confirm access to your account by entering one of your emergency recovery codes.',
-            buttonText: 'login using an authentication code',
+                'Enter one of the recovery codes you saved when you set up two-factor authentication.',
+            buttonText: 'Use an authentication code instead',
         };
     }
 
     return {
         title: 'Authentication code',
-        description:
-            'Enter the authentication code provided by your authenticator application.',
-        buttonText: 'login using a recovery code',
+        description: 'Enter the 6-digit code from your authenticator app.',
+        buttonText: 'Use a recovery code instead',
     };
 });
 
@@ -85,11 +84,10 @@ const toggleRecoveryMode = (clearErrors: () => void): void => {
                 <Button type="submit" class="w-full" :disabled="processing"
                     >Continue</Button
                 >
-                <div class="text-center text-sm text-muted-foreground">
-                    <span>or you can </span>
+                <div class="text-center text-sm">
                     <button
                         type="button"
-                        class="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
+                        class="rounded-sm text-foreground underline decoration-foreground/30 underline-offset-4 transition-colors hover:decoration-current"
                         @click="() => toggleRecoveryMode(clearErrors)"
                     >
                         {{ authConfigContent.buttonText }}
@@ -109,6 +107,7 @@ const toggleRecoveryMode = (clearErrors: () => void): void => {
                     name="recovery_code"
                     type="text"
                     placeholder="Enter recovery code"
+                    aria-label="Recovery code"
                     v-focus
                     required
                 />
@@ -117,11 +116,10 @@ const toggleRecoveryMode = (clearErrors: () => void): void => {
                     >Continue</Button
                 >
 
-                <div class="text-center text-sm text-muted-foreground">
-                    <span>or you can </span>
+                <div class="text-center text-sm">
                     <button
                         type="button"
-                        class="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
+                        class="rounded-sm text-foreground underline decoration-foreground/30 underline-offset-4 transition-colors hover:decoration-current"
                         @click="() => toggleRecoveryMode(clearErrors)"
                     >
                         {{ authConfigContent.buttonText }}

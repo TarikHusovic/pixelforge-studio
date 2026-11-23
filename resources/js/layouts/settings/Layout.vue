@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
+import { Palette, ShieldCheck, UserRound } from '@lucide/vue';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -14,14 +15,17 @@ const sidebarNavItems: NavItem[] = [
     {
         title: 'Profile',
         href: editProfile(),
+        icon: UserRound,
     },
     {
         title: 'Security',
         href: editSecurity(),
+        icon: ShieldCheck,
     },
     {
         title: 'Appearance',
         href: editAppearance(),
+        icon: Palette,
     },
 ];
 
@@ -29,30 +33,37 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
 </script>
 
 <template>
-    <div class="px-4 py-6">
+    <div class="px-4 py-6 md:px-8 md:py-8">
         <Heading
             title="Settings"
-            description="Manage your profile and account settings"
+            description="Your profile, sign-in methods and theme."
         />
 
-        <div class="flex flex-col lg:flex-row lg:space-x-12">
-            <aside class="w-full max-w-xl lg:w-48">
-                <nav
-                    class="flex flex-col space-y-1 space-x-0"
-                    aria-label="Settings"
-                >
+        <div class="flex flex-col lg:flex-row lg:gap-12">
+            <aside class="w-full max-w-xl lg:w-48 lg:shrink-0">
+                <nav class="flex flex-col gap-1" aria-label="Settings">
                     <Button
                         v-for="item in sidebarNavItems"
                         :key="toUrl(item.href)"
                         variant="ghost"
                         :class="[
                             'w-full justify-start',
-                            { 'bg-muted': isCurrentOrParentUrl(item.href) },
+                            {
+                                'bg-accent font-semibold text-accent-foreground':
+                                    isCurrentOrParentUrl(item.href),
+                            },
                         ]"
                         as-child
                     >
-                        <Link :href="item.href">
-                            <component :is="item.icon" class="h-4 w-4" />
+                        <Link
+                            :href="item.href"
+                            :aria-current="
+                                isCurrentOrParentUrl(item.href)
+                                    ? 'page'
+                                    : undefined
+                            "
+                        >
+                            <component :is="item.icon" />
                             {{ item.title }}
                         </Link>
                     </Button>
@@ -61,7 +72,7 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
 
             <Separator class="my-6 lg:hidden" />
 
-            <div class="flex-1 md:max-w-2xl">
+            <div class="min-w-0 flex-1 md:max-w-2xl">
                 <section class="max-w-xl space-y-12">
                     <slot />
                 </section>

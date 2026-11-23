@@ -41,7 +41,7 @@ defineOptions({
         <Heading
             variant="small"
             title="Update password"
-            description="Ensure your account is using a long, random password to stay secure"
+            description="Use a long, random password to keep your account safe."
         />
 
         <Form
@@ -63,7 +63,6 @@ defineOptions({
                 <PasswordInput
                     id="current_password"
                     name="current_password"
-                    class="mt-1 block w-full"
                     autocomplete="current-password"
                     placeholder="Current password"
                 />
@@ -75,7 +74,6 @@ defineOptions({
                 <PasswordInput
                     id="password"
                     name="password"
-                    class="mt-1 block w-full"
                     autocomplete="new-password"
                     placeholder="New password"
                     :passwordrules="props.passwordRules"
@@ -88,7 +86,6 @@ defineOptions({
                 <PasswordInput
                     id="password_confirmation"
                     name="password_confirmation"
-                    class="mt-1 block w-full"
                     autocomplete="new-password"
                     placeholder="Confirm password"
                     :passwordrules="props.passwordRules"

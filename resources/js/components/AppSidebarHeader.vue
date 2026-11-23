@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import AppearanceMenu from '@/components/AppearanceMenu.vue';
 import Breadcrumbs from '@/components/Breadcrumbs.vue';
+import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import type { BreadcrumbItem } from '@/types';
 
@@ -14,14 +16,20 @@ withDefaults(
 </script>
 
 <template>
+    <!-- Sticky, so the studio's sticky composer can sit right under it at any scroll position. -->
     <header
-        class="flex h-16 shrink-0 items-center gap-2 border-b border-sidebar-border/70 px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:px-4"
+        class="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b bg-background/85 px-4 backdrop-blur md:rounded-t-xl md:px-6"
     >
-        <div class="flex items-center gap-2">
-            <SidebarTrigger class="-ml-1" />
-            <template v-if="breadcrumbs && breadcrumbs.length > 0">
-                <Breadcrumbs :breadcrumbs="breadcrumbs" />
-            </template>
+        <SidebarTrigger class="-ml-1 size-8" />
+        <template v-if="breadcrumbs.length > 0">
+            <Separator
+                orientation="vertical"
+                class="data-[orientation=vertical]:h-4"
+            />
+            <Breadcrumbs :breadcrumbs="breadcrumbs" class="min-w-0" />
+        </template>
+        <div class="ml-auto">
+            <AppearanceMenu />
         </div>
     </header>
 </template>
