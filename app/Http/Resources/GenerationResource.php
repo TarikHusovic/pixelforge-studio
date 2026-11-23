@@ -28,6 +28,7 @@ class GenerationResource extends JsonResource
             'size' => $this->size,
             'quality' => $this->quality,
             'reference_images' => $this->reference_images,
+            'markup_percent' => $this->markup_percent,
             'estimated_cost_nanos' => $this->estimated_cost_nanos,
             'max_cost_nanos' => $this->max_cost_nanos,
             'cost_nanos' => $this->cost_nanos,
@@ -36,6 +37,7 @@ class GenerationResource extends JsonResource
             'error_code' => $this->error_code,
             'error_message' => $this->error_message,
             'created_at' => $this->created_at,
+            'completed_at' => $this->completed_at,
         ];
     }
 }

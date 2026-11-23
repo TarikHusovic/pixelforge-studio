@@ -15,6 +15,8 @@ export type Generation = {
     size: string;
     quality: string;
     reference_images: string[];
+    /** Our markup on Pixelforge's cost, fixed when the generation was created. */
+    markup_percent: number;
     estimated_cost_nanos: Nanos;
     max_cost_nanos: Nanos;
     /** What the user was charged: null while in flight, 0 when failed. */
@@ -27,7 +29,17 @@ export type Generation = {
     /** True while pending, queued or processing. */
     in_flight: boolean;
     created_at: string;
+    /** When it succeeded or failed. */
+    completed_at: string | null;
 };
+
+/** The gallery's status tabs. in_progress = pending, queued or processing. */
+export type GenerationFilter = 'all' | 'in_progress' | 'succeeded' | 'failed';
+
+export type GenerationFilters = { status: GenerationFilter; search: string };
+
+/** Per tab, over the user's whole history whatever the filters. */
+export type GenerationCounts = Record<GenerationFilter, number>;
 
 /** A Laravel paginator wrapped in a JsonResource collection. */
 export type Paginated<TItem> = {

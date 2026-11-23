@@ -10,6 +10,7 @@ Route::redirect('/', '/generations')->name('home');
 
 Route::middleware('auth')->group(function () {
     Route::resource('generations', GenerationController::class)->only(['index', 'store']);
+    Route::get('generations/{generation}/download', [GenerationController::class, 'download'])->name('generations.download');
     Route::get('credits', [CreditController::class, 'index'])->name('credits.index');
     Route::resource('credit-purchases', CreditPurchaseController::class)->only(['store']);
 

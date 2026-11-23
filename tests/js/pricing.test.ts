@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+    breakdown,
     estimate,
     providerCost,
     withMarkup,
@@ -61,6 +62,43 @@ await test('counts a partial text token as a whole one', () => {
 await test('counts a multi-byte character as one character', () => {
     assert.deepEqual(lowSquare('ééééüüüü'), lowSquare('aaaaaaaa'));
     assert.deepEqual(lowSquare('🎨🎨🎨🎨'), lowSquare('aaaa'));
+});
+
+await test("breaks the docs' worked example down to the same totals", () => {
+    const receipt = breakdown(pricing, 'a'.repeat(400), '1536x1024', 'high', 2);
+
+    assert.deepEqual(
+        receipt.total,
+        estimate(pricing, 'a'.repeat(400), '1536x1024', 'high', 2),
+    );
+});
+
+await test('breaks a prompt-only quote down to the same totals', () => {
+    const receipt = breakdown(pricing, 'A lighthouse', '1024x1536', 'low', 0);
+
+    assert.deepEqual(
+        receipt.total,
+        estimate(pricing, 'A lighthouse', '1024x1536', 'low', 0),
+    );
+});
+
+await test("adds the docs' worked example up line by line", () => {
+    const receipt = breakdown(pricing, 'a'.repeat(400), '1536x1024', 'high', 2);
+
+    for (const column of ['estimated', 'max'] as const) {
+        const lines = Object.values(receipt.costs).reduce(
+            (sum, cost) => sum + cost[column],
+            0,
+        );
+
+        assert.equal(lines, receipt.providerCost[column]);
+        assert.equal(
+            receipt.providerCost[column] + receipt.fee[column],
+            receipt.total[column],
+        );
+    }
+    // The docs' own max: 115 text, 1530 image, 6450 output and 8000 reasoning tokens.
+    assert.equal(receipt.providerCost.max, 373_875_000);
 });
 
 await test("costs the docs' succeeded generation at $0.305510000", () => {

@@ -1,233 +1,159 @@
 <script setup lang="ts">
-import type { LucideIcon } from '@lucide/vue';
+import { Copy, Download, Maximize2, Repeat2, RotateCcw } from '@lucide/vue';
+import { useTimeAgo } from '@vueuse/core';
+import { computed } from 'vue';
 import {
-    AlertCircle,
-    CircleCheck,
-    Clock,
-    ImageOff,
-    LoaderCircle,
-    RotateCcw,
-} from '@lucide/vue';
-import { computed, ref } from 'vue';
-import { Badge } from '@/components/ui/badge';
-import type { BadgeVariants } from '@/components/ui/badge';
+    copyPrompt,
+    formatDateTime,
+    hasImage,
+} from '@/components/generations/display';
+import GenerationMedia from '@/components/generations/GenerationMedia.vue';
+import IconButton from '@/components/generations/IconButton.vue';
 import { Button } from '@/components/ui/button';
 import { formatUsd, formatUsdExact } from '@/lib/money';
-import type { Generation, GenerationStatus } from '@/types';
+import { download } from '@/routes/generations';
+import type { Generation } from '@/types';
 
 const props = defineProps<{
     generation: Generation;
 }>();
 
 defineEmits<{
-    retry: [generation: Generation];
+    /** Put its settings back in the composer. */
+    reuse: [generation: Generation];
+    open: [generation: Generation];
 }>();
 
-const STATUSES: Record<
-    GenerationStatus,
-    {
-        label: string;
-        icon: LucideIcon;
-        spin?: boolean;
-        variant: BadgeVariants['variant'];
+const createdAgo = useTimeAgo(() => props.generation.created_at);
+const failed = computed(() => props.generation.status === 'failed');
+const imageAvailable = computed(() => hasImage(props.generation));
+
+/** "1024×1024 · medium · 2 refs" */
+const settings = computed(() => {
+    const { size, quality, reference_images: references } = props.generation;
+    const parts = [size.replace('x', '×'), quality];
+
+    if (references.length > 0) {
+        parts.push(
+            `${references.length} ${references.length === 1 ? 'ref' : 'refs'}`,
+        );
     }
-> = {
-    pending: {
-        label: 'Submitting',
-        icon: LoaderCircle,
-        spin: true,
-        variant: 'secondary',
-    },
-    queued: { label: 'Queued', icon: Clock, variant: 'secondary' },
-    processing: {
-        label: 'Processing',
-        icon: LoaderCircle,
-        spin: true,
-        variant: 'secondary',
-    },
-    succeeded: { label: 'Succeeded', icon: CircleCheck, variant: 'outline' },
-    failed: { label: 'Failed', icon: AlertCircle, variant: 'destructive' },
-};
 
-const BUSY = 'Pixelforge was busy, and we gave up after retrying.';
-
-/** Keyed by error_code; anything else (submission_failed too) falls back to the stored message. */
-const FAILURE_REASONS: Record<string, string> = {
-    generation_failed: "Pixelforge couldn't produce an image for this prompt.",
-    internal_error:
-        'Pixelforge had an internal error. Trying again usually works.',
-    content_policy_violation:
-        "Pixelforge's content policy rejected this prompt.",
-    daily_limit_exceeded:
-        "Pixelforge's daily limit was reached. It resets at 00:00 UTC.",
-    rate_limit_exceeded: BUSY,
-    concurrency_limit_exceeded: BUSY,
-    overloaded: BUSY,
-    connection_failed: "We couldn't reach Pixelforge.",
-};
-
-/** Why a pending generation is still waiting, keyed by the error_code of its last attempt. */
-const WAITING_REASONS: Record<string, string> = {
-    concurrency_limit_exceeded:
-        'Waiting for a free slot: Pixelforge runs 3 generations at a time.',
-    connection_failed: "Can't reach Pixelforge, retrying.",
-};
-
-const dateTime = new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
+    return parts.join(' · ');
 });
-
-const status = computed(() => STATUSES[props.generation.status]);
-const failureReason = computed(
-    () =>
-        FAILURE_REASONS[props.generation.error_code ?? ''] ??
-        props.generation.error_message ??
-        'Something went wrong.',
-);
-
-const waitingReason = computed(() =>
-    props.generation.status === 'pending' && props.generation.error_code
-        ? (WAITING_REASONS[props.generation.error_code] ??
-          'Pixelforge is busy, retrying.')
-        : null,
-);
-
-// "1536x1024" -> "1536 / 1024", so the placeholder and the image take the same space.
-const aspectRatio = computed(() => props.generation.size.replace('x', ' / '));
-const expired = computed(
-    () =>
-        props.generation.image_expires_at !== null &&
-        new Date(props.generation.image_expires_at).getTime() <= Date.now(),
-);
-const imageFailed = ref(false);
-const showImage = computed(
-    () =>
-        props.generation.status === 'succeeded' &&
-        props.generation.image_url !== null &&
-        !expired.value &&
-        !imageFailed.value,
-);
-
-const referenceCount = computed(() => props.generation.reference_images.length);
 </script>
 
 <template>
-    <article class="flex flex-col overflow-hidden rounded-xl border bg-card">
-        <div class="bg-muted" :style="{ aspectRatio }">
-            <a
-                v-if="showImage && generation.image_url"
-                :href="generation.image_url"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="block size-full"
-                title="Open full size in a new tab"
+    <!-- Named by its prompt, so "Copy prompt" and friends say which card they're on. -->
+    <article
+        class="flex flex-col overflow-hidden rounded-xl border bg-card"
+        :aria-labelledby="`prompt-${generation.id}`"
+    >
+        <button
+            v-if="imageAvailable"
+            type="button"
+            class="block cursor-zoom-in outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset"
+            aria-label="View details"
+            @click="$emit('open', generation)"
+        >
+            <GenerationMedia :generation="generation" />
+        </button>
+        <GenerationMedia v-else :generation="generation" />
+
+        <div class="flex flex-1 flex-col gap-2 p-3">
+            <p
+                :id="`prompt-${generation.id}`"
+                class="line-clamp-2 text-sm"
+                :title="generation.prompt"
             >
-                <img
-                    :src="generation.image_url"
-                    :alt="generation.prompt"
-                    loading="lazy"
-                    class="size-full object-cover"
-                    @error="imageFailed = true"
-                />
-            </a>
-            <div
-                v-else
-                class="flex size-full flex-col items-center justify-center gap-2 p-4 text-center text-sm text-muted-foreground"
-                :class="{ 'animate-pulse': generation.in_flight }"
-            >
-                <ImageOff v-if="!generation.in_flight" class="size-6" />
-                <span v-if="expired">
-                    Image expired — Pixelforge links last 24 hours
-                </span>
-                <span v-else-if="imageFailed">Couldn't load the image</span>
-            </div>
-        </div>
-
-        <div class="flex flex-1 flex-col gap-3 p-4">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-                <Badge :variant="status.variant" aria-live="polite">
-                    <component
-                        :is="status.icon"
-                        :class="{ 'animate-spin': status.spin }"
-                    />
-                    {{ status.label }}
-                </Badge>
-                <span
-                    v-if="generation.in_flight"
-                    class="text-xs text-muted-foreground tabular-nums"
-                >
-                    <span
-                        :title="formatUsdExact(generation.estimated_cost_nanos)"
-                        >Est.
-                        {{ formatUsd(generation.estimated_cost_nanos) }}</span
-                    >
-                    ·
-                    <span :title="formatUsdExact(generation.max_cost_nanos)"
-                        >up to {{ formatUsd(generation.max_cost_nanos) }}</span
-                    >
-                </span>
-                <span
-                    v-else-if="
-                        generation.status === 'succeeded' &&
-                        generation.cost_nanos !== null
-                    "
-                    class="text-xs tabular-nums"
-                >
-                    <span
-                        class="font-medium"
-                        :title="formatUsdExact(generation.cost_nanos)"
-                        >Charged {{ formatUsd(generation.cost_nanos) }}</span
-                    >
-                    <span
-                        class="text-muted-foreground"
-                        :title="formatUsdExact(generation.estimated_cost_nanos)"
-                    >
-                        (est. {{ formatUsd(generation.estimated_cost_nanos) }})
-                    </span>
-                </span>
-                <span v-else class="text-xs text-muted-foreground">
-                    Not charged
-                </span>
-            </div>
-
-            <p v-if="waitingReason" class="text-xs text-muted-foreground">
-                {{ waitingReason }}
-            </p>
-
-            <p class="line-clamp-3 text-sm" :title="generation.prompt">
                 {{ generation.prompt }}
             </p>
 
             <p class="text-xs text-muted-foreground">
-                {{ generation.size.replace('x', '×') }} ·
-                {{ generation.quality }}
-                <template v-if="referenceCount > 0">
-                    · {{ referenceCount }} reference
-                    {{ referenceCount === 1 ? 'image' : 'images' }}
-                </template>
-                <br />
-                <time :datetime="generation.created_at">
-                    {{ dateTime.format(new Date(generation.created_at)) }}
-                </time>
+                {{ settings }} ·
+                <time
+                    :datetime="generation.created_at"
+                    :title="formatDateTime(generation.created_at)"
+                    >{{ createdAgo }}</time
+                >
             </p>
 
-            <div
-                v-if="generation.status === 'failed'"
-                class="mt-auto grid gap-2"
-            >
-                <p class="text-sm text-red-600 dark:text-red-500">
-                    {{ failureReason }}
-                </p>
+            <p class="text-xs">
+                <template v-if="generation.in_flight">
+                    Est.
+                    <span
+                        class="font-mono tabular-nums"
+                        :title="formatUsdExact(generation.estimated_cost_nanos)"
+                        >{{ formatUsd(generation.estimated_cost_nanos) }}</span
+                    >
+                    <span class="text-muted-foreground">
+                        · up to
+                        <span
+                            class="font-mono tabular-nums"
+                            :title="formatUsdExact(generation.max_cost_nanos)"
+                            >{{ formatUsd(generation.max_cost_nanos) }}</span
+                        >
+                        held
+                    </span>
+                </template>
+                <template
+                    v-else-if="
+                        generation.status === 'succeeded' &&
+                        generation.cost_nanos !== null
+                    "
+                >
+                    <span class="font-medium">
+                        Charged
+                        <span
+                            class="font-mono tabular-nums"
+                            :title="formatUsdExact(generation.cost_nanos)"
+                            >{{ formatUsd(generation.cost_nanos) }}</span
+                        >
+                    </span>
+                    <span class="text-muted-foreground">
+                        · est.
+                        <span
+                            class="font-mono tabular-nums"
+                            :title="
+                                formatUsdExact(generation.estimated_cost_nanos)
+                            "
+                            >{{
+                                formatUsd(generation.estimated_cost_nanos)
+                            }}</span
+                        >
+                    </span>
+                </template>
+                <span v-else class="text-muted-foreground">Not charged</span>
+            </p>
+
+            <div class="mt-auto flex items-center gap-1 pt-1">
                 <Button
                     variant="outline"
-                    size="sm"
-                    class="w-fit"
-                    @click="$emit('retry', generation)"
+                    class="me-auto"
+                    :aria-label="failed ? undefined : 'Reuse settings'"
+                    @click="$emit('reuse', generation)"
                 >
-                    <RotateCcw />
-                    Try again
+                    <component :is="failed ? RotateCcw : Repeat2" />
+                    {{ failed ? 'Try again' : 'Reuse' }}
                 </Button>
+                <IconButton
+                    label="Copy prompt"
+                    @click="copyPrompt(generation.prompt)"
+                >
+                    <Copy />
+                </IconButton>
+                <IconButton
+                    v-if="imageAvailable"
+                    label="Download"
+                    as="a"
+                    :href="download.url(generation)"
+                    download
+                >
+                    <Download />
+                </IconButton>
+                <IconButton label="Details" @click="$emit('open', generation)">
+                    <Maximize2 />
+                </IconButton>
             </div>
         </div>
     </article>
