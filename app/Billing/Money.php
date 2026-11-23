@@ -15,7 +15,7 @@ final class Money
     public const int NANOS_PER_DOLLAR = 1_000_000_000;
 
     /** "0.046125000" => 46_125_000 */
-    public static function fromDecimal(string $usd): int
+    public static function toNanos(string $usd): int
     {
         if (preg_match('/^(\d+)(?:\.(\d{1,9}))?$/', $usd, $matches) !== 1) {
             throw new InvalidArgumentException("Not a USD amount with at most 9 decimals: [{$usd}].");

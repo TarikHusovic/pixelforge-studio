@@ -12,8 +12,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Pixelforge delivers every event at least once and in any order. Each event is applied
- * at most once (deduped by its id), and Generation::applyUpdate() only moves forward.
+ * Pixelforge delivers every event at least once, so each one is applied at most once,
+ * deduped by its event id.
  */
 class PixelforgeWebhookController extends Controller
 {

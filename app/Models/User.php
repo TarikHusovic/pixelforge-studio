@@ -73,6 +73,12 @@ class User extends Authenticatable implements PasskeyUser
         return (int) $this->creditPurchases()->sum('amount_nanos') - (int) $this->generations()->sum('cost_nanos');
     }
 
+    /** What the user can spend right now: their balance minus what in-flight generations hold. */
+    public function availableNanos(): int
+    {
+        return $this->balanceNanos() - $this->reservedNanos();
+    }
+
     /** The most the user's in-flight generations can still cost, held back from the balance. */
     public function reservedNanos(): int
     {

@@ -125,11 +125,12 @@ it('records the estimate worked out on the server, not one sent by the browser',
     fakePixelforgePricing();
     $user = userWithCredits();
 
-    actingAs($user)->post(route('generations.store'), generationRequest(['estimated_cost_nanos' => 1, 'max_cost_nanos' => 1]))
+    actingAs($user)->post(route('generations.store'), generationRequest(['estimated_cost_nanos' => 1, 'max_cost_nanos' => 1, 'markup_percent' => 0]))
         ->assertRedirect(route('generations.index'));
 
     expect($user->generations()->sole())
         ->status->toBe(GenerationStatus::Pending)
+        ->markup_percent->toBe(25)
         ->estimated_cost_nanos->toBe(72_206_250)
         ->max_cost_nanos->toBe(86_275_000)
         ->cost_nanos->toBeNull();

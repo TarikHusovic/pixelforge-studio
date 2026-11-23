@@ -23,6 +23,7 @@ class GenerationResource extends JsonResource
         return [
             'id' => $this->id,
             'status' => $this->status,
+            'in_flight' => ! $this->status->isFinal(),
             'prompt' => $this->prompt,
             'size' => $this->size,
             'quality' => $this->quality,
@@ -35,7 +36,6 @@ class GenerationResource extends JsonResource
             'error_code' => $this->error_code,
             'error_message' => $this->error_message,
             'created_at' => $this->created_at,
-            'completed_at' => $this->completed_at,
         ];
     }
 }

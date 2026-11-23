@@ -135,7 +135,7 @@ class ReportController extends Controller
 
         $amounts = fn (array $row): array => [
             'generations' => (int) $row['generations'],
-            'cost_nanos' => Money::fromDecimal($row['cost_usd']),
+            'cost_nanos' => Money::toNanos($row['cost_usd']),
         ];
 
         return [

@@ -14,7 +14,7 @@ return new class extends Migration
             $table->id();
             $table->string('event_id')->unique();
             $table->string('type');
-            $table->foreignUlid('generation_id')->nullable()->index();
+            $table->foreignUlid('generation_id')->constrained()->cascadeOnDelete();
             $table->json('payload');
             $table->timestamp('created_at');
         });

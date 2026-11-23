@@ -41,8 +41,8 @@ class GenerationController extends Controller
             // Serializes this user's submissions, so two at once can't spend the same credits.
             $user = User::query()->lockForUpdate()->findOrFail($request->user()->id);
 
-            // Reserve the most it can cost, so a balance can never go negative.
-            if ($user->balanceNanos() - $user->reservedNanos() < $estimate['max']) {
+            // Reserve the most it can cost, so the final charge always fits.
+            if ($user->availableNanos() < $estimate['max']) {
                 throw ValidationException::withMessages([
                     'credits' => 'Not enough credits for this generation. Buy credits to continue.',
                 ]);
@@ -53,6 +53,7 @@ class GenerationController extends Controller
                 'size' => $input['size'],
                 'quality' => $input['quality'],
                 'reference_images' => $referenceImages,
+                'markup_percent' => Pricing::MARKUP_PERCENT,
                 'estimated_cost_nanos' => $estimate['estimated'],
                 'max_cost_nanos' => $estimate['max'],
             ]);

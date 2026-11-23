@@ -1,10 +1,11 @@
 import type { Nanos, Pricing } from '@/types';
 
 /**
- * Mirrors App\Billing\Pricing::estimate(), price(), cost() and withMarkup(), so the
- * browser quotes exactly what the server stores. Keep the two in sync.
+ * Mirrors App\Billing\Pricing::estimate(), price(), providerCost() and withMarkup(),
+ * so the browser quotes exactly what the server stores. Keep the two in sync
+ * (tests/js/pricing.test.ts checks the same cases as tests/Unit/PricingTest.php).
  *
- * BigInt because cost() sums usage x rate before dividing, which outgrows
+ * BigInt because providerCost() sums usage x rate before dividing, which outgrows
  * Number's exact range long before PHP's int64 does.
  */
 export function estimate(
@@ -49,10 +50,13 @@ export function countCharacters(prompt: string): number {
 }
 
 function price(pricing: Pricing, usage: Record<string, number>): Nanos {
-    return withMarkup(cost(usage, pricing.rates), pricing.markup_percent);
+    return withMarkup(
+        providerCost(usage, pricing.rates),
+        pricing.markup_percent,
+    );
 }
 
-function cost(
+export function providerCost(
     usage: Record<string, number>,
     rates: Record<string, Nanos>,
 ): Nanos {
@@ -65,6 +69,6 @@ function cost(
     return Number((total + 500_000n) / 1_000_000n);
 }
 
-function withMarkup(nanos: Nanos, markupPercent: number): Nanos {
+export function withMarkup(nanos: Nanos, markupPercent: number): Nanos {
     return Number((BigInt(nanos) * BigInt(100 + markupPercent) + 99n) / 100n);
 }

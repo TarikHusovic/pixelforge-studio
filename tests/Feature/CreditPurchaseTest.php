@@ -42,7 +42,7 @@ it('doesn\'t sell credits to guests', function () {
     expect(CreditPurchase::count())->toBe(0);
 });
 
-it('shares the balance, and what in-flight generations hold back from it', function () {
+it('shares what the user can spend, and what in-flight generations hold back', function () {
     $user = userWithCredits(10 * 1_000_000_000);
     Generation::factory()->for($user)->succeeded(costNanos: 80_000_000)->create();
     Generation::factory()->for($user)->failed()->create();
@@ -51,6 +51,6 @@ it('shares the balance, and what in-flight generations hold back from it', funct
 
     actingAs($user)->get(route('profile.edit'))
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('credits.balance_nanos', 9_920_000_000)
+            ->where('credits.available_nanos', 9_920_000_000 - 86_275_000)
             ->where('credits.reserved_nanos', 86_275_000));
 });

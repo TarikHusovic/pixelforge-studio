@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('quality');
             $table->json('reference_images');
 
-            // Money is integer nanodollars (1 USD = 1_000_000_000), never floats.
+            $table->unsignedSmallInteger('markup_percent');
             $table->bigInteger('estimated_cost_nanos');
             $table->bigInteger('max_cost_nanos');
             $table->bigInteger('cost_nanos')->nullable();

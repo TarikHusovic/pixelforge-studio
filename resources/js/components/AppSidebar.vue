@@ -16,13 +16,13 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { report } from '@/routes/admin';
-import { index } from '@/routes/generations';
+import generations from '@/routes/generations';
 import type { NavItem } from '@/types';
 
 const page = usePage();
 
 const mainNavItems = computed<NavItem[]>(() => [
-    { title: 'Generate', href: index(), icon: Sparkles },
+    { title: 'Generate', href: generations.index(), icon: Sparkles },
     ...(page.props.auth.user.is_admin
         ? [{ title: 'Admin report', href: report(), icon: ChartColumn }]
         : []),
@@ -35,7 +35,7 @@ const mainNavItems = computed<NavItem[]>(() => [
             <SidebarMenu>
                 <SidebarMenuItem>
                     <SidebarMenuButton size="lg" as-child>
-                        <Link :href="index()">
+                        <Link :href="generations.index()">
                             <AppLogo />
                         </Link>
                     </SidebarMenuButton>

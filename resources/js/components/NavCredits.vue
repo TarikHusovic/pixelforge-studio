@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { usePage } from '@inertiajs/vue3';
 import { Wallet } from '@lucide/vue';
+import { computed } from 'vue';
 import BuyCreditsDialog from '@/components/BuyCreditsDialog.vue';
 import { Button } from '@/components/ui/button';
-import { useCredits } from '@/composables/useCredits';
 import { formatUsd, formatUsdExact } from '@/lib/money';
 
-const { credits, available } = useCredits();
+const page = usePage();
+const credits = computed(() => page.props.credits);
 </script>
 
 <template>
@@ -17,9 +19,9 @@ const { credits, available } = useCredits();
             <Wallet class="size-4 text-muted-foreground" />
             <span
                 class="font-medium tabular-nums"
-                :title="formatUsdExact(available)"
+                :title="formatUsdExact(credits.available_nanos)"
             >
-                {{ formatUsd(available) }} available
+                {{ formatUsd(credits.available_nanos) }} available
             </span>
         </div>
         <p

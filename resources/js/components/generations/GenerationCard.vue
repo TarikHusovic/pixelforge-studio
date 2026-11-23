@@ -50,9 +50,8 @@ const STATUSES: Record<
 };
 
 const BUSY = 'Pixelforge was busy, and we gave up after retrying.';
-const UNREACHABLE = "We couldn't reach Pixelforge.";
 
-/** Keyed by error_code; anything else falls back to the stored message. */
+/** Keyed by error_code; anything else (submission_failed too) falls back to the stored message. */
 const FAILURE_REASONS: Record<string, string> = {
     generation_failed: "Pixelforge couldn't produce an image for this prompt.",
     internal_error:
@@ -64,8 +63,7 @@ const FAILURE_REASONS: Record<string, string> = {
     rate_limit_exceeded: BUSY,
     concurrency_limit_exceeded: BUSY,
     overloaded: BUSY,
-    connection_failed: UNREACHABLE,
-    submission_failed: UNREACHABLE,
+    connection_failed: "We couldn't reach Pixelforge.",
 };
 
 const dateTime = new Intl.DateTimeFormat(undefined, {
@@ -74,9 +72,6 @@ const dateTime = new Intl.DateTimeFormat(undefined, {
 });
 
 const status = computed(() => STATUSES[props.generation.status]);
-const inFlight = computed(() =>
-    ['pending', 'queued', 'processing'].includes(props.generation.status),
-);
 const failureReason = computed(
     () =>
         FAILURE_REASONS[props.generation.error_code ?? ''] ??
@@ -125,9 +120,9 @@ const referenceCount = computed(() => props.generation.reference_images.length);
             <div
                 v-else
                 class="flex size-full flex-col items-center justify-center gap-2 p-4 text-center text-sm text-muted-foreground"
-                :class="{ 'animate-pulse': inFlight }"
+                :class="{ 'animate-pulse': generation.in_flight }"
             >
-                <ImageOff v-if="!inFlight" class="size-6" />
+                <ImageOff v-if="!generation.in_flight" class="size-6" />
                 <span v-if="expired">
                     Image expired — Pixelforge links last 24 hours
                 </span>
@@ -137,7 +132,7 @@ const referenceCount = computed(() => props.generation.reference_images.length);
 
         <div class="flex flex-1 flex-col gap-3 p-4">
             <div class="flex flex-wrap items-center justify-between gap-2">
-                <Badge :variant="status.variant">
+                <Badge :variant="status.variant" aria-live="polite">
                     <component
                         :is="status.icon"
                         :class="{ 'animate-spin': status.spin }"
@@ -145,7 +140,7 @@ const referenceCount = computed(() => props.generation.reference_images.length);
                     {{ status.label }}
                 </Badge>
                 <span
-                    v-if="inFlight"
+                    v-if="generation.in_flight"
                     class="text-xs text-muted-foreground tabular-nums"
                 >
                     <span
@@ -215,7 +210,7 @@ const referenceCount = computed(() => props.generation.reference_images.length);
                 class="mt-auto grid gap-2"
             >
                 <p class="text-sm text-red-600 dark:text-red-500">
-                    {{ failureReason }} You weren't charged.
+                    {{ failureReason }}
                 </p>
                 <Button
                     variant="outline"

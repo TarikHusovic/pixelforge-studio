@@ -20,9 +20,10 @@ use UnexpectedValueException;
 /**
  * An image a user asked for, generated on Pixelforge.
  *
- * Money columns are integer nanodollars. cost_nanos is what the user is charged: it stays
- * null while the generation is in flight, which keeps max_cost_nanos reserved against the
- * user's balance, and is set exactly once, when the generation reaches a final status.
+ * cost_nanos is what the user is charged: it stays null while the generation is in flight,
+ * which keeps max_cost_nanos reserved against the user's balance, and is set once, when the
+ * generation reaches a final status. Like Pixelforge's rates, the markup is fixed when the
+ * generation is created.
  *
  * @property string $id ULID, also our Idempotency-Key and metadata.generation_id at Pixelforge
  * @property int $user_id
@@ -32,6 +33,7 @@ use UnexpectedValueException;
  * @property string $size
  * @property string $quality
  * @property list<string> $reference_images
+ * @property int $markup_percent
  * @property int $estimated_cost_nanos
  * @property int $max_cost_nanos
  * @property int|null $cost_nanos
@@ -46,7 +48,7 @@ use UnexpectedValueException;
  * @property CarbonImmutable $created_at
  * @property CarbonImmutable $updated_at
  */
-#[Fillable(['prompt', 'size', 'quality', 'reference_images', 'estimated_cost_nanos', 'max_cost_nanos'])]
+#[Fillable(['prompt', 'size', 'quality', 'reference_images', 'markup_percent', 'estimated_cost_nanos', 'max_cost_nanos'])]
 class Generation extends Model
 {
     /** @use HasFactory<GenerationFactory> */
@@ -66,6 +68,7 @@ class Generation extends Model
         return [
             'status' => GenerationStatus::class,
             'reference_images' => 'array',
+            'markup_percent' => 'integer',
             'estimated_cost_nanos' => 'integer',
             'max_cost_nanos' => 'integer',
             'cost_nanos' => 'integer',
@@ -110,6 +113,8 @@ class Generation extends Model
             'rates' => $object['rates'],
             'error_code' => $object['error']['code'] ?? null,
             'error_message' => $object['error']['message'] ?? null,
+            // Not final yet, so nothing is charged and max_cost_nanos stays reserved. These only
+            // matter when Pixelforge revives a generation we had given up on (see below).
             'completed_at' => $object['completed_at'],
             'provider_cost_nanos' => null,
             'cost_nanos' => null,
@@ -117,13 +122,13 @@ class Generation extends Model
 
         if ($status === GenerationStatus::Succeeded) {
             $usage = $object['usage'] ?? throw new UnexpectedValueException("Pixelforge generation {$object['id']} succeeded without usage.");
-            $providerCost = Pricing::cost($usage, Pricing::parseRates($object['rates']));
+            $providerCost = Pricing::providerCost($usage, Pricing::parseRates($object['rates']));
 
             $changes = [
                 ...$changes,
                 'usage' => $usage,
                 'provider_cost_nanos' => $providerCost,
-                'cost_nanos' => Pricing::withMarkup($providerCost),
+                'cost_nanos' => Pricing::withMarkup($providerCost, $this->markup_percent),
                 'image_url' => $object['image_url'],
                 'image_expires_at' => $object['image_url_expires_at'],
             ];
@@ -139,12 +144,21 @@ class Generation extends Model
             || ($current->status === GenerationStatus::Failed && $current->provider_id === null));
     }
 
+    /** Pixelforge is busy and we'll retry: keep the reason, so the user sees why it's waiting. */
+    public function delaySubmission(string $code, string $message): void
+    {
+        static::query()
+            ->whereKey($this->id)
+            ->where('status', GenerationStatus::Pending)
+            ->update(['error_code' => $code, 'error_message' => $message]);
+    }
+
     /**
      * Pixelforge refused the generation, or we gave up submitting it. Failed generations are free.
      * Only while it's still pending: once Pixelforge has accepted it (an early webhook can tell us
      * before our own request does), only Pixelforge decides how it ends and what it costs.
      */
-    public function markFailed(string $code, string $message): void
+    public function failSubmission(string $code, string $message): void
     {
         $this->advanceTo(GenerationStatus::Failed, [
             'error_code' => $code,
@@ -156,9 +170,8 @@ class Generation extends Model
     }
 
     /**
-     * The submit job, webhooks and polling can race on one generation, so whether the change
-     * is allowed is decided on the locked row. Statuses only moving forward is what makes
-     * duplicate and out-of-order updates harmless, and records the charge exactly once.
+     * The submit job, webhooks and polling can race on one generation, so whether a change
+     * is allowed is decided on the locked row.
      *
      * @param  array<string, mixed>  $changes
      * @param  Closure(self): bool  $allowed

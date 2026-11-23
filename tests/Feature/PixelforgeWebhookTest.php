@@ -185,7 +185,7 @@ it('applies an event on redelivery when processing it failed the first time', fu
 
 it('lets Pixelforge correct a generation we gave up submitting, when it had it after all', function () {
     $generation = Generation::factory()->create();
-    $generation->markFailed('connection_failed', 'Could not reach Pixelforge.');
+    $generation->failSubmission('connection_failed', 'Could not reach Pixelforge.');
 
     deliverWebhook(pixelforgeEvent(pixelforgeGeneration($generation, 'succeeded')))->assertSuccessful();
 
@@ -199,7 +199,7 @@ it('lets Pixelforge correct a generation we gave up submitting, when it had it a
 
 it('holds credits again when Pixelforge turns out to be running a generation we gave up on', function () {
     $generation = Generation::factory()->create();
-    $generation->markFailed('connection_failed', 'Could not reach Pixelforge.');
+    $generation->failSubmission('connection_failed', 'Could not reach Pixelforge.');
 
     deliverWebhook(pixelforgeEvent(pixelforgeGeneration($generation, 'processing')))->assertSuccessful();
 
@@ -208,4 +208,12 @@ it('holds credits again when Pixelforge turns out to be running a generation we 
         ->cost_nanos->toBeNull()
         ->completed_at->toBeNull()
         ->and($generation->user->reservedNanos())->toBe($generation->max_cost_nanos);
+});
+
+it('charges the markup the generation was quoted at, not today\'s', function () {
+    $generation = Generation::factory()->processing()->create(['markup_percent' => 10]);
+
+    deliverWebhook(pixelforgeEvent(pixelforgeGeneration($generation, 'succeeded')))->assertSuccessful();
+
+    expect($generation->refresh())->cost_nanos->toBe(336_061_000)->provider_cost_nanos->toBe(305_510_000);
 });

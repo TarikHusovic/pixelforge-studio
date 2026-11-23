@@ -59,21 +59,21 @@ it('counts a multi-byte character as one character', function () {
 it('costs the docs\' succeeded generation at $0.305510000', function () {
     $usage = ['input_text_tokens' => 12, 'input_image_tokens' => 765, 'output_tokens' => 6450, 'reasoning_tokens' => 3184, 'total_tokens' => 10411];
 
-    expect(Pricing::cost($usage, docsRates()))->toBe(305_510_000);
+    expect(Pricing::providerCost($usage, docsRates()))->toBe(305_510_000);
 });
 
 it('costs the docs\' usage report day at $0.169080000', function () {
     $usage = ['input_text_tokens' => 41, 'input_image_tokens' => 0, 'output_tokens' => 3300, 'reasoning_tokens' => 2950];
 
-    expect(Pricing::cost($usage, docsRates()))->toBe(169_080_000);
+    expect(Pricing::providerCost($usage, docsRates()))->toBe(169_080_000);
 });
 
 it('costs one token at $1.00 per million as $0.000001', function () {
-    expect(Pricing::cost(['output_tokens' => 1], ['output_tokens' => Money::fromDecimal('1.00')]))->toBe(1_000);
+    expect(Pricing::providerCost(['output_tokens' => 1], ['output_tokens' => Money::toNanos('1.00')]))->toBe(1_000);
 });
 
 it('adds 25% and rounds up to the nanodollar', function (int $providerCost, int $userPrice) {
-    expect(Pricing::withMarkup($providerCost))->toBe($userPrice);
+    expect(Pricing::withMarkup($providerCost, 25))->toBe($userPrice);
 })->with([
     'nothing' => [0, 0],
     'exact' => [4, 5],
@@ -89,7 +89,7 @@ it('offers the qualities and sizes Pixelforge prices', function () {
 });
 
 it('reads exact decimal dollars as nanodollars', function (string $usd, int $nanos) {
-    expect(Money::fromDecimal($usd))->toBe($nanos);
+    expect(Money::toNanos($usd))->toBe($nanos);
 })->with([
     ['0.046125000', 46_125_000],
     ['0.373875000', 373_875_000],
@@ -100,7 +100,7 @@ it('reads exact decimal dollars as nanodollars', function (string $usd, int $nan
 ]);
 
 it('refuses anything that isn\'t an exact non-negative dollar amount', function (string $usd) {
-    Money::fromDecimal($usd);
+    Money::toNanos($usd);
 })->throws(InvalidArgumentException::class)->with([
     'negative' => '-1.00',
     'beyond nanodollars' => '0.0000000001',

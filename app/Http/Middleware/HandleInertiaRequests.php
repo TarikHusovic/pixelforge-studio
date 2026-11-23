@@ -43,7 +43,7 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'credits' => fn () => $request->user() ? [
-                'balance_nanos' => $request->user()->balanceNanos(),
+                'available_nanos' => $request->user()->availableNanos(),
                 'reserved_nanos' => $request->user()->reservedNanos(),
                 'purchase_amounts' => CreditPurchase::DOLLAR_AMOUNTS,
             ] : null,

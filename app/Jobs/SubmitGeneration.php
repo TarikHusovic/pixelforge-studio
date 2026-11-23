@@ -39,24 +39,18 @@ class SubmitGeneration implements ShouldQueue
             $this->generation->applyUpdate($pixelforge->createGeneration($this->generation));
         } catch (PixelforgeException $e) {
             if (! $e->isRetryable() || $this->attempts() >= $this->tries) {
-                $this->generation->markFailed($e->errorCode, $e->getMessage());
+                $this->generation->failSubmission($e->errorCode, $e->getMessage());
 
                 return;
             }
 
-            // Lets the user see why it's still waiting; cleared once Pixelforge accepts it.
-            Generation::query()
-                ->whereKey($this->generation->id)
-                ->where('status', GenerationStatus::Pending)
-                ->update(['error_code' => $e->errorCode, 'error_message' => $e->getMessage()]);
-
-            // Every attempt sends the same Idempotency-Key, so a retry can't create a duplicate.
+            $this->generation->delaySubmission($e->errorCode, $e->getMessage());
             $this->release(max($e->retryAfter ?? 0, min(60, 2 ** $this->attempts())));
         }
     }
 
     public function failed(?Throwable $e): void
     {
-        $this->generation->markFailed('submission_failed', 'Something went wrong while submitting this generation.');
+        $this->generation->failSubmission('submission_failed', 'Something went wrong while submitting this generation.');
     }
 }

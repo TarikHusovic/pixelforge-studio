@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { useCredits } from '@/composables/useCredits';
+import { Textarea } from '@/components/ui/textarea';
 import { formatUsd, formatUsdExact } from '@/lib/money';
 import { countCharacters, estimate } from '@/lib/pricing';
 import type { Generation, Pricing } from '@/types';
@@ -32,8 +32,8 @@ const page = usePage();
 const creditsError = computed(() => page.props.errors.credits);
 
 const formElement = useTemplateRef('formElement');
-const promptInput = useTemplateRef('promptInput');
-const { credits, available } = useCredits();
+const credits = computed(() => page.props.credits);
+const available = computed(() => credits.value?.available_nanos ?? 0);
 
 const form = useForm({
     prompt: '',
@@ -105,17 +105,17 @@ function submit() {
 }
 
 /** "Try again": put a past generation's settings back in the composer. */
-function load(generation: Generation) {
+function prefill(generation: Generation) {
     form.prompt = generation.prompt;
     form.size = generation.size;
     form.quality = generation.quality;
     form.reference_images = [...generation.reference_images];
     form.clearErrors();
     formElement.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    promptInput.value?.focus({ preventScroll: true });
+    document.getElementById('prompt')?.focus({ preventScroll: true });
 }
 
-defineExpose({ load });
+defineExpose({ prefill });
 </script>
 
 <template>
@@ -137,21 +137,24 @@ defineExpose({ load });
 
         <div class="grid gap-2">
             <Label for="prompt">Prompt</Label>
-            <textarea
+            <Textarea
                 id="prompt"
-                ref="promptInput"
                 v-model="form.prompt"
                 required
                 rows="4"
                 placeholder="A lighthouse on a cliff at dawn, oil painting"
-                class="min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:aria-invalid:ring-destructive/40"
+                class="min-h-24"
                 :aria-invalid="form.errors.prompt ? true : undefined"
-                aria-describedby="prompt-length"
+                :aria-describedby="
+                    form.errors.prompt
+                        ? 'prompt-error prompt-length'
+                        : 'prompt-length'
+                "
                 @keydown.meta.enter.prevent="formElement?.requestSubmit()"
                 @keydown.ctrl.enter.prevent="formElement?.requestSubmit()"
             />
             <div class="flex gap-4">
-                <InputError :message="form.errors.prompt" />
+                <InputError id="prompt-error" :message="form.errors.prompt" />
                 <span
                     id="prompt-length"
                     class="ml-auto text-xs text-muted-foreground tabular-nums"
@@ -302,22 +305,21 @@ defineExpose({ load });
             </div>
         </div>
 
-        <div
-            v-if="shortOfCredits && quote"
-            class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-600 dark:border-red-200/10 dark:bg-red-700/10 dark:text-red-100"
-            role="alert"
-        >
-            <p>
-                Not enough credits: this can cost up to
-                {{ formatUsd(quote.max) }} and you have
-                {{ formatUsd(available) }} available.
-            </p>
-            <BuyCreditsDialog>
-                <Button type="button" variant="outline" size="sm">
-                    Buy credits
-                </Button>
-            </BuyCreditsDialog>
-        </div>
+        <Alert v-if="shortOfCredits && quote" variant="destructive">
+            <AlertCircle />
+            <AlertTitle>Not enough credits</AlertTitle>
+            <AlertDescription class="grid justify-items-start gap-2">
+                <p>
+                    This can cost up to {{ formatUsd(quote.max) }} and you have
+                    {{ formatUsd(available) }} available.
+                </p>
+                <BuyCreditsDialog>
+                    <Button type="button" variant="outline" size="sm">
+                        Buy credits
+                    </Button>
+                </BuyCreditsDialog>
+            </AlertDescription>
+        </Alert>
         <InputError v-else :message="creditsError" />
     </form>
 </template>

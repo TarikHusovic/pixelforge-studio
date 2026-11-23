@@ -27,7 +27,7 @@ class SyncGenerations extends Command
             ->whereIn('status', [GenerationStatus::Queued, GenerationStatus::Processing])
             ->where('updated_at', '<', now()->subMinutes(2))
             ->oldest('updated_at')
-            ->limit(20) // ponytail: stays well under Pixelforge's 60 requests/minute; raise with volume
+            ->limit(20) // well under Pixelforge's 60 requests/minute
             ->get();
 
         foreach ($overdue as $generation) {

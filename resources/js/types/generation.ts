@@ -24,8 +24,9 @@ export type Generation = {
     /** On a failed generation: why. On a pending one: why we're still retrying. */
     error_code: string | null;
     error_message: string | null;
+    /** True while pending, queued or processing. */
+    in_flight: boolean;
     created_at: string;
-    completed_at: string | null;
 };
 
 /** A Laravel paginator wrapped in a JsonResource collection. */
@@ -61,7 +62,8 @@ export type Pricing = {
 };
 
 export type Credits = {
-    balance_nanos: Nanos;
+    /** What the user can spend now: the balance minus what in-flight generations hold. */
+    available_nanos: Nanos;
     /** Held back for in-flight generations: the most they can still cost. */
     reserved_nanos: Nanos;
     /** Whole-dollar amounts the "Buy credits" button offers. */

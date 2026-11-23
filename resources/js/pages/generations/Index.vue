@@ -19,13 +19,11 @@ const props = defineProps<{
     pricing: Pricing | null;
 }>();
 
-const composer = useTemplateRef('composer');
+const generationForm = useTemplateRef('generationForm');
 
 // Live status: poll while anything on this page is still on its way.
 const inFlight = computed(() =>
-    props.generations.data.some((generation) =>
-        ['pending', 'queued', 'processing'].includes(generation.status),
-    ),
+    props.generations.data.some((generation) => generation.in_flight),
 );
 const { start, stop } = usePoll(
     2000,
@@ -42,7 +40,7 @@ const lastPage = computed(() => props.generations.meta.last_page);
     <Head title="Generate" />
 
     <div class="mx-auto grid w-full max-w-7xl gap-8 p-4">
-        <GenerationForm ref="composer" :pricing="pricing" />
+        <GenerationForm ref="generationForm" :pricing="pricing" />
 
         <section class="grid gap-4" aria-labelledby="history-heading">
             <h2 id="history-heading" class="text-lg font-semibold">
@@ -65,7 +63,7 @@ const lastPage = computed(() => props.generations.meta.last_page);
                     v-for="generation in generations.data"
                     :key="generation.id"
                     :generation="generation"
-                    @retry="composer?.load($event)"
+                    @retry="generationForm?.prefill($event)"
                 />
             </div>
 

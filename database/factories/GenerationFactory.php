@@ -28,6 +28,7 @@ class GenerationFactory extends Factory
             'size' => '1024x1024',
             'quality' => 'medium',
             'reference_images' => [],
+            'markup_percent' => 25,
             'estimated_cost_nanos' => 72_206_250,
             'max_cost_nanos' => 86_275_000,
         ];

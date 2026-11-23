@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Cache;
  */
 final readonly class Pricing
 {
+    /** For new generations; each one keeps the markup it was quoted at. */
     public const int MARKUP_PERCENT = 25;
 
     /**
@@ -48,7 +49,7 @@ final readonly class Pricing
      */
     public static function parseRates(array $rates): array
     {
-        return array_map(Money::fromDecimal(...), $rates);
+        return array_map(Money::toNanos(...), $rates);
     }
 
     /** @return list<string> */
@@ -98,7 +99,7 @@ final readonly class Pricing
      * @param  array<string, int>  $usage
      * @param  array<string, int>  $rates
      */
-    public static function cost(array $usage, array $rates): int
+    public static function providerCost(array $usage, array $rates): int
     {
         $total = 0;
 
@@ -106,15 +107,15 @@ final readonly class Pricing
             $total += ($usage[$tokenType] ?? 0) * $ratePerMillion;
         }
 
-        // ponytail: exact while rates have at most 3 decimals (all of Pixelforge's do);
-        // finer rates would leave a sub-nanodollar remainder, rounded half up here.
+        // Exact while rates have at most 3 decimals (all of Pixelforge's do); finer rates
+        // would leave a sub-nanodollar remainder, rounded half up here.
         return intdiv($total + 500_000, 1_000_000);
     }
 
     /** Rounds up, so a sub-nanodollar remainder can never undercharge. */
-    public static function withMarkup(int $nanos): int
+    public static function withMarkup(int $nanos, int $markupPercent): int
     {
-        return intdiv($nanos * (100 + self::MARKUP_PERCENT) + 99, 100);
+        return intdiv($nanos * (100 + $markupPercent) + 99, 100);
     }
 
     /**
@@ -132,6 +133,6 @@ final readonly class Pricing
     /** @param  array<string, int>  $usage */
     private function price(array $usage): int
     {
-        return self::withMarkup(self::cost($usage, $this->rates));
+        return self::withMarkup(self::providerCost($usage, $this->rates), self::MARKUP_PERCENT);
     }
 }
