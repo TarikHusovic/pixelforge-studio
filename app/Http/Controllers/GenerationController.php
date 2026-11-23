@@ -37,7 +37,7 @@ class GenerationController extends Controller
         $referenceImages = $input['reference_images'] ?? [];
         $estimate = Pricing::current()->estimate($input['prompt'], $input['size'], $input['quality'], count($referenceImages));
 
-        $generation = DB::transaction(function () use ($request, $input, $referenceImages, $estimate): Generation {
+        DB::transaction(function () use ($request, $input, $referenceImages, $estimate): void {
             // Serializes this user's submissions, so two at once can't spend the same credits.
             $user = User::query()->lockForUpdate()->findOrFail($request->user()->id);
 
@@ -48,7 +48,7 @@ class GenerationController extends Controller
                 ]);
             }
 
-            return $user->generations()->create([
+            $generation = $user->generations()->create([
                 'prompt' => $input['prompt'],
                 'size' => $input['size'],
                 'quality' => $input['quality'],
@@ -57,9 +57,11 @@ class GenerationController extends Controller
                 'estimated_cost_nanos' => $estimate['estimated'],
                 'max_cost_nanos' => $estimate['max'],
             ]);
-        });
 
-        SubmitGeneration::dispatch($generation);
+            // Queued inside the transaction: on the database queue the job commits with the
+            // generation, so there's never a pending generation that nothing will submit.
+            SubmitGeneration::dispatch($generation);
+        });
 
         return to_route('generations.index');
     }

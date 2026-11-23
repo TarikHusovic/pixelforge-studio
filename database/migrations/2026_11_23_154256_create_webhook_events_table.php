@@ -14,7 +14,9 @@ return new class extends Migration
             $table->id();
             $table->string('event_id')->unique();
             $table->string('type');
-            $table->foreignUlid('generation_id')->constrained()->cascadeOnDelete();
+            // No foreign key on purpose: on Postgres its KEY SHARE lock deadlocks against the
+            // generation's FOR UPDATE when two deliveries for one generation race.
+            $table->ulid('generation_id')->index();
             $table->json('payload');
             $table->timestamp('created_at');
         });

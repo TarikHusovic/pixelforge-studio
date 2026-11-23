@@ -197,3 +197,13 @@ it('tells the user to try again, instead of failing, when Pixelforge pricing is 
 
     expect(Generation::query()->count())->toBe(0);
 });
+
+it('keeps a deleted account\'s generations, so the books still match Pixelforge\'s', function () {
+    $user = User::factory()->create();
+    $generation = Generation::factory()->for($user)->succeeded()->create();
+
+    actingAs($user)->delete(route('profile.destroy'), ['password' => 'password'])->assertRedirect('/');
+
+    expect($user->fresh()->trashed())->toBeTrue()
+        ->and($generation->fresh())->not->toBeNull();
+});

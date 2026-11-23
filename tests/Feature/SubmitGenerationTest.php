@@ -123,11 +123,11 @@ it('fails the generation for free, without retrying, when Pixelforge refuses it'
     'bad api key' => ['invalid_api_key', 401],
 ]);
 
-it('gives up for free after the last attempt', function () {
-    $generation = Generation::factory()->create();
+it('gives up for free once a generation has waited 30 minutes', function () {
+    $generation = Generation::factory()->create(['created_at' => now()->subMinutes(30)->addSecond()]);
     Http::fake([CREATE_URL => pixelforgeError('overloaded', 503, retryAfter: 2)]);
 
-    runSubmitGeneration($generation, attempt: 10)->assertNotReleased();
+    runSubmitGeneration($generation)->assertNotReleased();
 
     expect($generation->refresh())
         ->status->toBe(GenerationStatus::Failed)
@@ -173,14 +173,14 @@ it('keeps a result that arrived by webhook while the create call was still in fl
 });
 
 it('doesn\'t give up on a generation Pixelforge accepted while the last attempt timed out', function () {
-    $generation = Generation::factory()->create();
+    $generation = Generation::factory()->create(['created_at' => now()->subMinutes(30)->addSecond()]);
     Http::fake([CREATE_URL => function (Request $request) use ($generation) {
         deliverWebhook(pixelforgeEvent(pixelforgeGeneration($generation, 'queued')))->assertSuccessful();
 
         return Http::failedConnection();
     }]);
 
-    runSubmitGeneration($generation, attempt: 10);
+    runSubmitGeneration($generation);
 
     expect($generation->refresh())->status->toBe(GenerationStatus::Queued)->cost_nanos->toBeNull();
 });
@@ -199,4 +199,27 @@ it('fails a still-pending generation for free when the job itself fails', functi
     (new SubmitGeneration($generation))->failed(new RuntimeException('Worker died mid-request.'));
 
     expect($generation->refresh())->status->toBe(GenerationStatus::Failed)->cost_nanos->toBe(0);
+});
+
+it('waits for a free slot, without asking Pixelforge, while 3 of ours are already running', function () {
+    Generation::factory()->queued()->create();
+    Generation::factory()->processing()->count(2)->create();
+    $generation = Generation::factory()->create();
+    Http::fake();
+
+    runSubmitGeneration($generation)->assertReleased(delay: 5);
+
+    Http::assertNothingSent();
+    expect($generation->refresh())->status->toBe(GenerationStatus::Pending)->error_code->toBe('concurrency_limit_exceeded');
+});
+
+it('submits as soon as one of the 3 slots frees up', function () {
+    Generation::factory()->processing()->count(2)->create();
+    Generation::factory()->succeeded()->create();
+    $generation = Generation::factory()->create();
+    Http::fake([CREATE_URL => Http::response(pixelforgeGeneration($generation), 202)]);
+
+    runSubmitGeneration($generation)->assertNotReleased();
+
+    expect($generation->refresh()->status)->toBe(GenerationStatus::Queued);
 });
