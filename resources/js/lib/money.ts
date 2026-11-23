@@ -1,6 +1,6 @@
 import type { Nanos } from '@/types';
 
-const NANOS_PER_DOLLAR = 1_000_000_000;
+export const NANOS_PER_DOLLAR = 1_000_000_000;
 
 const rounded = new Intl.NumberFormat('en-US', {
     style: 'currency',

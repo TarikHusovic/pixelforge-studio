@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { ChartColumn, Sparkles } from '@lucide/vue';
+import { ChartColumn, Coins, Sparkles } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavCredits from '@/components/NavCredits.vue';
@@ -16,13 +16,15 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { report } from '@/routes/admin';
+import credits from '@/routes/credits';
 import generations from '@/routes/generations';
 import type { NavItem } from '@/types';
 
 const page = usePage();
 
 const mainNavItems = computed<NavItem[]>(() => [
-    { title: 'Generate', href: generations.index(), icon: Sparkles },
+    { title: 'Studio', href: generations.index(), icon: Sparkles },
+    { title: 'Credits', href: credits.index(), icon: Coins },
     ...(page.props.auth.user.is_admin
         ? [{ title: 'Admin report', href: report(), icon: ChartColumn }]
         : []),
