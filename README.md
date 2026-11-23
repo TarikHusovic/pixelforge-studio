@@ -4,7 +4,7 @@ Generate images with [Pixelforge](https://pixelforge.promptedit.dev) and pay exa
 
 Built with Laravel 13, Inertia 3, Vue 3.5, Tailwind 4 and Postgres for the PromptEdit senior product engineer take-home.
 
-- **Live:** _(deployment URL)_
+- **Live:** https://pixelforge-studio.laravel.cloud
 - **Try it:** register, buy some (fake) credits, generate. The prompt keywords `[fail]`, `[slow]`, `[duplicate]`, `[blocked]` and `[overloaded]` make Pixelforge misbehave on purpose.
 
 ## Running it locally
