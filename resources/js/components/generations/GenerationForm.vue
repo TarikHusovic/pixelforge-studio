@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useForm, usePage } from '@inertiajs/vue3';
-import { AlertCircle, CircleCheck } from '@lucide/vue';
+import { AlertCircle, CircleCheck, Coins } from '@lucide/vue';
 import { useLocalStorage, usePreferredReducedMotion } from '@vueuse/core';
-import { computed, nextTick, useTemplateRef, watch } from 'vue';
+import { computed, useTemplateRef, watch } from 'vue';
 import { store } from '@/actions/App/Http/Controllers/GenerationController';
 import BuyCreditsDialog from '@/components/BuyCreditsDialog.vue';
 import ComposerPrompt from '@/components/generations/ComposerPrompt.vue';
@@ -124,6 +124,26 @@ const shortOfCredits = computed(
     () => quote.value !== null && available.value < quote.value.max,
 );
 
+// A new account: welcome it, rather than greet it with a red "not enough credits".
+const noCredits = computed(
+    () =>
+        credits.value !== null &&
+        available.value <= 0 &&
+        credits.value.reserved_nanos === 0,
+);
+
+// Buying credits from one of the alerts below removes the alert, and the open dialog with it,
+// which leaves focus nowhere: put it back in the prompt.
+watch(
+    shortOfCredits,
+    (short, wasShort) => {
+        if (wasShort && !short && document.activeElement === document.body) {
+            focusPrompt();
+        }
+    },
+    { flush: 'post' },
+);
+
 const affordable = computed(() =>
     quote.value ? Math.floor(available.value / quote.value.estimated) : 0,
 );
@@ -141,7 +161,13 @@ const blockedReason = computed(() => {
         return `Shorten the prompt to ${MAX_PROMPT_LENGTH.toLocaleString('en-US')} characters.`;
     }
 
-    return shortOfCredits.value ? 'Not enough credits for this one.' : null;
+    if (!shortOfCredits.value) {
+        return null;
+    }
+
+    return noCredits.value
+        ? 'Add credits to generate.'
+        : 'Not enough credits for this one.';
 });
 
 const canGenerate = computed(
@@ -344,9 +370,22 @@ defineExpose({ prefill, addReference });
                 </p>
             </div>
 
-            <!-- Not a live region: it would re-read on every keystroke; #generate-status says it once. -->
+            <!-- Neither alert is a live region: they'd re-read on every keystroke; #generate-status says it once. -->
+            <Alert v-if="noCredits" role="none">
+                <Coins />
+                <AlertTitle>Add credits to start</AlertTitle>
+                <AlertDescription class="grid justify-items-start gap-2">
+                    <p>
+                        Credits are US dollars, spent as you generate. This is a
+                        demo, so no payment is taken.
+                    </p>
+                    <BuyCreditsDialog :per-image-nanos="quote?.estimated">
+                        <Button type="button">Buy credits</Button>
+                    </BuyCreditsDialog>
+                </AlertDescription>
+            </Alert>
             <Alert
-                v-if="shortOfCredits && quote"
+                v-else-if="shortOfCredits && quote"
                 variant="destructive"
                 role="none"
             >
@@ -364,11 +403,7 @@ defineExpose({ prefill, addReference });
                         }}</span>
                         available.
                     </p>
-                    <!-- Buying hides this alert and the dialog with it, so hand focus back to the prompt. -->
-                    <BuyCreditsDialog
-                        :per-image-nanos="quote.estimated"
-                        @purchased="nextTick(focusPrompt)"
-                    >
+                    <BuyCreditsDialog :per-image-nanos="quote.estimated">
                         <Button type="button" variant="outline">
                             Buy credits
                         </Button>

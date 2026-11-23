@@ -22,10 +22,6 @@ const props = defineProps<{
     perImageNanos?: Nanos;
 }>();
 
-const emit = defineEmits<{
-    purchased: [];
-}>();
-
 const page = usePage();
 const amounts = computed(() => page.props.credits?.purchase_amounts ?? []);
 const available = computed(() => page.props.credits?.available_nanos ?? 0);
@@ -62,10 +58,7 @@ function buy() {
                 buying.value = true;
                 error.value = undefined;
             },
-            onSuccess: () => {
-                open.value = false;
-                emit('purchased');
-            },
+            onSuccess: () => (open.value = false),
             onError: (errors) => (error.value = errors.amount),
             onFinish: () => (buying.value = false),
         },
