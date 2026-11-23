@@ -1,31 +1,21 @@
 <script setup lang="ts">
-import { Deferred, Form, Head } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import { computed } from 'vue';
-import PixelforgeCells from '@/components/admin/PixelforgeCells.vue';
+import DailyChart from '@/components/admin/DailyChart.vue';
+import DaysTable from '@/components/admin/DaysTable.vue';
+import PixelforgeTile from '@/components/admin/PixelforgeTile.vue';
+import type {
+    Amounts,
+    PixelforgeReport,
+    ReportDay,
+    ReportUser,
+} from '@/components/admin/report';
+import { generationCount } from '@/components/admin/report';
+import ReportRange from '@/components/admin/ReportRange.vue';
+import UsersTable from '@/components/admin/UsersTable.vue';
 import Heading from '@/components/Heading.vue';
-import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
 import { formatUsd, formatUsdExact } from '@/lib/money';
 import { report } from '@/routes/admin';
-import type { Nanos } from '@/types';
-
-/** Succeeded generations only, on the UTC day they completed. */
-type Amounts = {
-    generations: number;
-    spend_nanos: Nanos;
-    provider_cost_nanos: Nanos;
-    profit_nanos: Nanos;
-};
-
-type PixelforgeUsage = { generations: number; cost_nanos: Nanos };
 
 defineOptions({
     layout: {
@@ -36,121 +26,104 @@ defineOptions({
 const props = defineProps<{
     /** Inclusive UTC days, after defaults and the 92-day limit. */
     range: { from: string; to: string };
-    days: (Amounts & { date: string })[];
+    /** Newest first, every day of the range, zeros included. */
+    days: ReportDay[];
     totals: Amounts;
-    users: (Amounts & { id: number; name: string; email: string })[];
+    /** Biggest spenders first. */
+    users: ReportUser[];
     /** Pixelforge's GET /v1/usage for the same days. Deferred; missing if Pixelforge failed. */
-    pixelforge?: {
-        days: Record<string, PixelforgeUsage>;
-        total: PixelforgeUsage;
-    };
+    pixelforge?: PixelforgeReport;
 }>();
 
-const stats = computed(() => [
-    {
-        label: 'Credit spend',
-        value: formatUsd(props.totals.spend_nanos),
-        hint: `What users were charged, ${props.totals.generations} generations`,
-    },
-    {
-        label: 'Provider cost',
-        value: formatUsd(props.totals.provider_cost_nanos),
-        hint: 'What Pixelforge charged us, by our records',
-    },
-    {
-        label: 'Profit',
-        value: formatUsd(props.totals.profit_nanos),
-        hint: 'Credit spend minus provider cost',
-    },
-    {
-        label: 'Margin',
-        value:
-            props.totals.spend_nanos === 0
-                ? '—'
-                : `${((props.totals.profit_nanos / props.totals.spend_nanos) * 100).toFixed(1)}%`,
-        hint: 'Profit as a share of credit spend',
-    },
-]);
+const tiles = computed(() => {
+    const { generations, spend_nanos, provider_cost_nanos, profit_nanos } =
+        props.totals;
+
+    return [
+        {
+            label: 'Credit spend',
+            value: formatUsd(spend_nanos),
+            exact: formatUsdExact(spend_nanos),
+            hint: `What users were charged for ${generationCount(generations)}`,
+        },
+        {
+            label: 'Provider cost',
+            value: formatUsd(provider_cost_nanos),
+            exact: formatUsdExact(provider_cost_nanos),
+            hint: 'What Pixelforge charged us, by our records',
+        },
+        {
+            label: 'Profit',
+            value: formatUsd(profit_nanos),
+            exact: formatUsdExact(profit_nanos),
+            hint: 'Credit spend minus provider cost',
+        },
+        {
+            label: 'Margin',
+            value:
+                spend_nanos === 0
+                    ? '—'
+                    : `${((profit_nanos / spend_nanos) * 100).toFixed(1)}%`,
+            exact: undefined,
+            hint: 'Profit as a share of credit spend',
+        },
+    ];
+});
 </script>
 
 <template>
     <Head title="Admin report" />
 
-    <div class="flex flex-col gap-8 p-4">
-        <div class="flex flex-wrap items-end justify-between gap-4">
-            <Heading
-                title="Admin report"
-                description="Credit spend, provider cost and profit per UTC day and per user."
+    <div class="mx-auto flex w-full max-w-7xl flex-col gap-8 p-4">
+        <header class="grid gap-1">
+            <h1 class="font-display text-2xl">Admin report</h1>
+            <p class="text-sm text-muted-foreground">
+                Credit spend, provider cost and profit per UTC day and per user,
+                checked against Pixelforge's GET /v1/usage.
+            </p>
+        </header>
+
+        <ReportRange :range="range" />
+
+        <div class="grid gap-4">
+            <dl class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div
+                    v-for="tile in tiles"
+                    :key="tile.label"
+                    class="grid gap-1 rounded-xl border bg-card p-4"
+                >
+                    <dt class="text-sm text-muted-foreground">
+                        {{ tile.label }}
+                    </dt>
+                    <dd
+                        class="font-mono text-2xl tabular-nums"
+                        :title="tile.exact"
+                    >
+                        {{ tile.value }}
+                    </dd>
+                    <dd class="text-xs text-muted-foreground">
+                        {{ tile.hint }}
+                    </dd>
+                </div>
+            </dl>
+
+            <PixelforgeTile
+                :days="days"
+                :totals="totals"
+                :pixelforge="pixelforge"
             />
-
-            <Form v-bind="report.form()" class="flex flex-wrap items-end gap-3">
-                <div class="grid gap-1.5">
-                    <Label for="from">From (UTC)</Label>
-                    <Input
-                        id="from"
-                        name="from"
-                        type="date"
-                        :default-value="range.from"
-                    />
-                </div>
-                <div class="grid gap-1.5">
-                    <Label for="to">To (UTC)</Label>
-                    <Input
-                        id="to"
-                        name="to"
-                        type="date"
-                        :default-value="range.to"
-                    />
-                </div>
-                <Button type="submit" variant="secondary">Show</Button>
-                <p class="w-full text-xs text-muted-foreground">
-                    Up to 92 days at a time, like Pixelforge's usage report.
-                </p>
-            </Form>
         </div>
 
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <Card v-for="stat in stats" :key="stat.label" class="gap-2 py-4">
-                <CardHeader class="px-4">
-                    <CardDescription>{{ stat.label }}</CardDescription>
-                    <CardTitle class="text-2xl tabular-nums">
-                        {{ stat.value }}
-                    </CardTitle>
-                    <p class="text-xs text-muted-foreground">{{ stat.hint }}</p>
-                </CardHeader>
-            </Card>
+        <section class="grid gap-3">
+            <Heading
+                variant="small"
+                title="Daily spend"
+                description="Credit spend per UTC day, oldest on the left: provider cost at the bottom of each bar, profit on top."
+            />
+            <DailyChart :days="days" />
+        </section>
 
-            <Card class="gap-2 py-4">
-                <CardHeader class="px-4">
-                    <CardDescription>Pixelforge reports</CardDescription>
-                    <Deferred data="pixelforge">
-                        <template #fallback>
-                            <Skeleton class="h-7 w-28" />
-                            <Skeleton class="h-4 w-36" />
-                        </template>
-                        <template #rescue>
-                            <CardTitle class="text-destructive">
-                                Couldn't reach Pixelforge
-                            </CardTitle>
-                            <p class="text-xs text-muted-foreground">
-                                Reload the page to try again.
-                            </p>
-                        </template>
-                        <template v-if="pixelforge">
-                            <CardTitle class="text-2xl tabular-nums">
-                                {{ formatUsd(pixelforge.total.cost_nanos) }}
-                            </CardTitle>
-                            <p class="text-xs text-muted-foreground">
-                                GET /v1/usage,
-                                {{ pixelforge.total.generations }} generations
-                            </p>
-                        </template>
-                    </Deferred>
-                </CardHeader>
-            </Card>
-        </div>
-
-        <section class="flex flex-col gap-3">
+        <section class="grid gap-3">
             <Heading
                 variant="small"
                 title="By day"
@@ -161,146 +134,16 @@ const stats = computed(() => [
                 recent generations can lag until their webhook or the minute-ly
                 poll lands.
             </p>
-
-            <div class="overflow-x-auto rounded-xl border">
-                <table class="w-full text-sm whitespace-nowrap tabular-nums">
-                    <thead class="border-b bg-muted/50 text-muted-foreground">
-                        <tr>
-                            <th class="px-3 py-2 text-left font-medium">Day</th>
-                            <th class="px-3 py-2 text-right font-medium">
-                                Generations
-                            </th>
-                            <th class="px-3 py-2 text-right font-medium">
-                                Credit spend
-                            </th>
-                            <th class="px-3 py-2 text-right font-medium">
-                                Provider cost
-                            </th>
-                            <th class="px-3 py-2 text-right font-medium">
-                                Pixelforge cost
-                            </th>
-                            <th class="px-3 py-2 text-left font-medium">
-                                Difference
-                            </th>
-                            <th class="px-3 py-2 text-right font-medium">
-                                Profit
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr
-                            v-for="day in days"
-                            :key="day.date"
-                            class="border-b last:border-0"
-                        >
-                            <td class="px-3 py-2">{{ day.date }}</td>
-                            <td class="px-3 py-2 text-right">
-                                {{ day.generations }}
-                            </td>
-                            <td class="px-3 py-2 text-right font-mono">
-                                {{ formatUsdExact(day.spend_nanos) }}
-                            </td>
-                            <td class="px-3 py-2 text-right font-mono">
-                                {{ formatUsdExact(day.provider_cost_nanos) }}
-                            </td>
-                            <PixelforgeCells
-                                :ours="day.provider_cost_nanos"
-                                :theirs="pixelforge?.days[day.date]?.cost_nanos"
-                            />
-                            <td class="px-3 py-2 text-right font-mono">
-                                {{ formatUsdExact(day.profit_nanos) }}
-                            </td>
-                        </tr>
-                    </tbody>
-                    <tfoot class="border-t bg-muted/50 font-medium">
-                        <tr>
-                            <td class="px-3 py-2">Total</td>
-                            <td class="px-3 py-2 text-right">
-                                {{ totals.generations }}
-                            </td>
-                            <td class="px-3 py-2 text-right font-mono">
-                                {{ formatUsdExact(totals.spend_nanos) }}
-                            </td>
-                            <td class="px-3 py-2 text-right font-mono">
-                                {{ formatUsdExact(totals.provider_cost_nanos) }}
-                            </td>
-                            <PixelforgeCells
-                                :ours="totals.provider_cost_nanos"
-                                :theirs="pixelforge?.total.cost_nanos"
-                            />
-                            <td class="px-3 py-2 text-right font-mono">
-                                {{ formatUsdExact(totals.profit_nanos) }}
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
+            <DaysTable :days="days" :totals="totals" :pixelforge="pixelforge" />
         </section>
 
-        <section class="flex flex-col gap-3">
+        <section class="grid gap-3">
             <Heading
                 variant="small"
                 title="By user"
                 description="Biggest spenders first."
             />
-
-            <div class="overflow-x-auto rounded-xl border">
-                <table class="w-full text-sm whitespace-nowrap tabular-nums">
-                    <thead class="border-b bg-muted/50 text-muted-foreground">
-                        <tr>
-                            <th class="px-3 py-2 text-left font-medium">
-                                User
-                            </th>
-                            <th class="px-3 py-2 text-right font-medium">
-                                Generations
-                            </th>
-                            <th class="px-3 py-2 text-right font-medium">
-                                Credit spend
-                            </th>
-                            <th class="px-3 py-2 text-right font-medium">
-                                Provider cost
-                            </th>
-                            <th class="px-3 py-2 text-right font-medium">
-                                Profit
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr
-                            v-for="user in users"
-                            :key="user.id"
-                            class="border-b last:border-0"
-                        >
-                            <td class="px-3 py-2">
-                                {{ user.name }}
-                                <span class="text-muted-foreground">
-                                    {{ user.email }}
-                                </span>
-                            </td>
-                            <td class="px-3 py-2 text-right">
-                                {{ user.generations }}
-                            </td>
-                            <td class="px-3 py-2 text-right font-mono">
-                                {{ formatUsdExact(user.spend_nanos) }}
-                            </td>
-                            <td class="px-3 py-2 text-right font-mono">
-                                {{ formatUsdExact(user.provider_cost_nanos) }}
-                            </td>
-                            <td class="px-3 py-2 text-right font-mono">
-                                {{ formatUsdExact(user.profit_nanos) }}
-                            </td>
-                        </tr>
-                        <tr v-if="users.length === 0">
-                            <td
-                                colspan="5"
-                                class="px-3 py-6 text-center text-muted-foreground"
-                            >
-                                No generations completed in this range.
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+            <UsersTable :users="users" :totals="totals" />
         </section>
     </div>
 </template>

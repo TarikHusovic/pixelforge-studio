@@ -2,6 +2,7 @@
 import { Deferred } from '@inertiajs/vue3';
 import { AlertTriangle, Check } from '@lucide/vue';
 import { computed } from 'vue';
+import { signedUsdExact } from '@/components/admin/report';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatUsdExact } from '@/lib/money';
@@ -36,12 +37,15 @@ const difference = computed(() => props.ours - (props.theirs ?? 0));
             {{ formatUsdExact(theirs ?? 0) }}
         </td>
         <td class="px-3 py-2">
-            <Badge v-if="difference === 0" variant="secondary">
+            <Badge
+                v-if="difference === 0"
+                variant="outline"
+                class="border-success/30 bg-success-soft text-success"
+            >
                 <Check /> Matches
             </Badge>
             <Badge v-else variant="destructive" class="font-mono">
-                <AlertTriangle />
-                {{ difference > 0 ? '+' : '' }}{{ formatUsdExact(difference) }}
+                <AlertTriangle /> {{ signedUsdExact(difference) }}
             </Badge>
         </td>
     </Deferred>
