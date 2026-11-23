@@ -66,6 +66,13 @@ const FAILURE_REASONS: Record<string, string> = {
     connection_failed: "We couldn't reach Pixelforge.",
 };
 
+/** Why a pending generation is still waiting, keyed by the error_code of its last attempt. */
+const WAITING_REASONS: Record<string, string> = {
+    concurrency_limit_exceeded:
+        'Waiting for a free slot: Pixelforge runs 3 generations at a time.',
+    connection_failed: "Can't reach Pixelforge, retrying.",
+};
+
 const dateTime = new Intl.DateTimeFormat(undefined, {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -77,6 +84,13 @@ const failureReason = computed(
         FAILURE_REASONS[props.generation.error_code ?? ''] ??
         props.generation.error_message ??
         'Something went wrong.',
+);
+
+const waitingReason = computed(() =>
+    props.generation.status === 'pending' && props.generation.error_code
+        ? (WAITING_REASONS[props.generation.error_code] ??
+          'Pixelforge is busy, retrying.')
+        : null,
 );
 
 // "1536x1024" -> "1536 / 1024", so the placeholder and the image take the same space.
@@ -177,15 +191,8 @@ const referenceCount = computed(() => props.generation.reference_images.length);
                 </span>
             </div>
 
-            <p
-                v-if="generation.status === 'pending' && generation.error_code"
-                class="text-xs text-muted-foreground"
-            >
-                {{
-                    generation.error_code === 'connection_failed'
-                        ? "Can't reach Pixelforge — retrying"
-                        : 'Waiting for Pixelforge — busy, retrying'
-                }}
+            <p v-if="waitingReason" class="text-xs text-muted-foreground">
+                {{ waitingReason }}
             </p>
 
             <p class="line-clamp-3 text-sm" :title="generation.prompt">
