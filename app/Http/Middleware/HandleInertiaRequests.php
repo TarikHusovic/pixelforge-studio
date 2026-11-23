@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\CreditPurchase;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -41,6 +42,11 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'credits' => fn () => $request->user() ? [
+                'balance_nanos' => $request->user()->balanceNanos(),
+                'reserved_nanos' => $request->user()->reservedNanos(),
+                'purchase_amounts' => CreditPurchase::DOLLAR_AMOUNTS,
+            ] : null,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

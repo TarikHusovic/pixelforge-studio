@@ -32,5 +32,7 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="PIXELFORGE_API_KEY" value="pf_test"/>
+        <env name="PIXELFORGE_WEBHOOK_SECRET" value="whsec_test"/>
     </php>
 </phpunit>
