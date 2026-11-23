@@ -79,6 +79,13 @@ class PixelforgeClient
             throw PixelforgeException::fromResponse($response);
         }
 
-        return $response->json();
+        $json = $response->json();
+
+        if (! is_array($json)) {
+            // Like a dropped connection (status 0): we can't tell what Pixelforge did.
+            throw new PixelforgeException('unreadable_response', 'Pixelforge sent a response we could not read.', 0);
+        }
+
+        return $json;
     }
 }

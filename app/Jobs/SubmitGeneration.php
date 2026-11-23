@@ -21,8 +21,11 @@ class SubmitGeneration implements ShouldQueue
 {
     use Queueable;
 
-    /** Up to ~2 minutes of backoff in total before giving up. */
-    public int $tries = 7;
+    /**
+     * Up to ~5 minutes of backoff in total before giving up: Pixelforge runs 3 generations
+     * at a time per account, and a [slow] one can hold a slot for 90 seconds.
+     */
+    public int $tries = 10;
 
     public function __construct(public Generation $generation) {}
 
@@ -48,7 +51,7 @@ class SubmitGeneration implements ShouldQueue
                 ->update(['error_code' => $e->errorCode, 'error_message' => $e->getMessage()]);
 
             // Every attempt sends the same Idempotency-Key, so a retry can't create a duplicate.
-            $this->release(max($e->retryAfter ?? 0, 2 ** $this->attempts()));
+            $this->release(max($e->retryAfter ?? 0, min(60, 2 ** $this->attempts())));
         }
     }
 

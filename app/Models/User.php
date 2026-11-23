@@ -35,6 +35,11 @@ class User extends Authenticatable implements PasskeyUser
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
+    /** @var array<string, mixed> */
+    protected $attributes = [
+        'is_admin' => false,
+    ];
+
     /**
      * Get the attributes that should be cast.
      *

@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Billing\Pricing;
 use App\Enums\GenerationStatus;
 use Carbon\CarbonImmutable;
+use Closure;
 use Database\Factories\GenerationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -109,30 +110,40 @@ class Generation extends Model
             'rates' => $object['rates'],
             'error_code' => $object['error']['code'] ?? null,
             'error_message' => $object['error']['message'] ?? null,
+            'completed_at' => $object['completed_at'],
+            'provider_cost_nanos' => null,
+            'cost_nanos' => null,
         ];
 
         if ($status === GenerationStatus::Succeeded) {
             $usage = $object['usage'] ?? throw new UnexpectedValueException("Pixelforge generation {$object['id']} succeeded without usage.");
             $providerCost = Pricing::cost($usage, Pricing::parseRates($object['rates']));
 
-            $changes += [
+            $changes = [
+                ...$changes,
                 'usage' => $usage,
                 'provider_cost_nanos' => $providerCost,
                 'cost_nanos' => Pricing::withMarkup($providerCost),
                 'image_url' => $object['image_url'],
                 'image_expires_at' => $object['image_url_expires_at'],
-                'completed_at' => $object['completed_at'],
             ];
         }
 
         if ($status === GenerationStatus::Failed) {
-            $changes += ['provider_cost_nanos' => 0, 'cost_nanos' => 0, 'completed_at' => $object['completed_at']];
+            $changes = [...$changes, 'provider_cost_nanos' => 0, 'cost_nanos' => 0];
         }
 
-        $this->advanceTo($status, $changes);
+        $this->advanceTo($status, $changes, fn (self $current): bool => $current->status->canBecome($status)
+            // We gave up submitting it before Pixelforge confirmed it, yet Pixelforge has it after
+            // all (say our last attempt timed out): its outcome wins, or its cost would go unrecorded.
+            || ($current->status === GenerationStatus::Failed && $current->provider_id === null));
     }
 
-    /** Pixelforge refused the generation, or we gave up submitting it. Failed generations are free. */
+    /**
+     * Pixelforge refused the generation, or we gave up submitting it. Failed generations are free.
+     * Only while it's still pending: once Pixelforge has accepted it (an early webhook can tell us
+     * before our own request does), only Pixelforge decides how it ends and what it costs.
+     */
     public function markFailed(string $code, string $message): void
     {
         $this->advanceTo(GenerationStatus::Failed, [
@@ -141,23 +152,24 @@ class Generation extends Model
             'provider_cost_nanos' => 0,
             'cost_nanos' => 0,
             'completed_at' => now(),
-        ]);
+        ], fn (self $current): bool => $current->status === GenerationStatus::Pending);
     }
 
     /**
-     * The submit job, webhooks and polling can race on one generation, so the status
-     * check and the write happen under a row lock. Only ever moving forward is what makes
+     * The submit job, webhooks and polling can race on one generation, so whether the change
+     * is allowed is decided on the locked row. Statuses only moving forward is what makes
      * duplicate and out-of-order updates harmless, and records the charge exactly once.
      *
      * @param  array<string, mixed>  $changes
+     * @param  Closure(self): bool  $allowed
      */
-    private function advanceTo(GenerationStatus $status, array $changes): void
+    private function advanceTo(GenerationStatus $status, array $changes, Closure $allowed): void
     {
-        DB::transaction(function () use ($status, $changes) {
-            $locked = static::query()->whereKey($this->id)->lockForUpdate()->firstOrFail();
+        DB::transaction(function () use ($status, $changes, $allowed) {
+            $current = static::query()->whereKey($this->id)->lockForUpdate()->firstOrFail();
 
-            if ($locked->status->canBecome($status)) {
-                $locked->forceFill(['status' => $status, ...$changes])->save();
+            if ($allowed($current)) {
+                $current->forceFill(['status' => $status, ...$changes])->save();
             }
         });
 

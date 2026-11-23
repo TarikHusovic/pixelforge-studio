@@ -2,11 +2,13 @@
 
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Pixelforge\PixelforgeException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -25,6 +27,17 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Pixelforge failing mid-request (say pricing, while submitting) is a toast, not a 500.
+        $exceptions->render(function (PixelforgeException $e, Request $request) {
+            if ($request->isMethod('GET') || $request->expectsJson()) {
+                return null;
+            }
+
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Pixelforge is unavailable right now. Please try again in a moment.']);
+
+            return back();
+        });
+
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

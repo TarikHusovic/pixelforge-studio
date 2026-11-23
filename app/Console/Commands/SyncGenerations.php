@@ -11,6 +11,7 @@ use App\Pixelforge\PixelforgeException;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Throwable;
 
 /**
  * Webhook delivery isn't guaranteed, so generations that have gone quiet are polled.
@@ -32,12 +33,14 @@ class SyncGenerations extends Command
         foreach ($overdue as $generation) {
             try {
                 $generation->applyUpdate($pixelforge->generation((string) $generation->provider_id));
-            } catch (PixelforgeException $e) {
+            } catch (Throwable $e) {
                 report($e);
 
-                if ($e->isRetryable()) {
+                if ($e instanceof PixelforgeException && $e->isRetryable()) {
                     return; // Pixelforge is busy: the rest wait for the next run
                 }
+            } finally {
+                $generation->touch(); // back of the line, so a row that keeps failing can't starve the rest
             }
         }
     }
