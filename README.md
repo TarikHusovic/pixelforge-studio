@@ -41,18 +41,31 @@ One deliberate exception: if we gave up submitting (say every attempt timed out)
 - **Estimate:** `ceil(characters / 4)` text tokens and the midpoint of the quality's reasoning range. **Maximum:** text tokens +15% (rounded up) and the top of the reasoning range. Both are shown before submitting; the actual cost replaces them once the generation finishes.
 - The user sees amounts rounded to 4 decimals, with the exact nine-decimal figure on hover. The admin report shows exact figures throughout.
 
+## The interface
+
+The studio is one screen: the composer on the left (sticky on wide screens), the gallery on the right.
+
+- **The price is never a surprise.** Every quality and size option shows what it would cost with the current prompt. The quote shows the estimate, the most that's held until the image is done, and a "How is this priced?" breakdown: tokens per type, Pixelforge's cost, our 25% and the total. It's computed by the same code as the quote ([`breakdown()`](resources/js/lib/pricing.ts)), so the two always agree. The Generate button carries the estimate, and when it's disabled a line under it says why.
+- **What's happening is visible.** Generations in progress keep their place in the gallery with a live elapsed time and, while waiting for a free Pixelforge slot, the reason. A toast says when one finishes (with "Not charged" when it fails), and the tab title counts what's in flight. The gallery filters by status and searches prompts.
+- **What went wrong is specific.** Failures map Pixelforge's error codes to plain language ("Pixelforge's content policy rejected this prompt", "Pixelforge was busy, and we gave up after retrying"), always with "Not charged" and a Try again that refills the composer.
+- **Every charge is auditable.** The Credits page lists purchases, charges, holds for generations in flight and failed generations at $0, so available = bought − charged − held can be checked line by line. Buying credits asks for confirmation and shows the balance after.
+- **Small things:** the composer keeps a draft (per user) across reloads; `/` jumps to the prompt and Ctrl/⌘+Enter generates; any image can be reused as a reference or its settings reused; images download through the app (Pixelforge's links expire after 24 hours, and the server only ever fetches from Pixelforge's host).
+- **Accessible by default:** colour pairs pass WCAG AA in light and dark themes, statuses never rely on colour alone, status text is announced politely, everything works from the keyboard, and animation stops for people who prefer reduced motion.
+
+The look is a "forge": paper and ink (or soot), with one hot colour, ember, kept for what's live: the Generate button and generations being forged, which have heat sweeping across them until the image develops in. Money is set in a monospace face, so amounts line up like a ledger.
+
 ## Admin report (stretch goal)
 
-[`/admin/report`](app/Http/Controllers/Admin/ReportController.php) shows credit spend, provider cost and profit per UTC day and per user. Like Pixelforge, a generation counts on the UTC day it **completed** (Pixelforge's own `completed_at`), not the day it was created. Each day sits next to what `GET /v1/usage` reports for this key, with a match or difference badge. The Pixelforge column is a deferred prop, so the page renders straight away and a Pixelforge outage only blanks that column.
+[`/admin/report`](app/Http/Controllers/Admin/ReportController.php) shows credit spend, provider cost and profit per UTC day and per user. Like Pixelforge, a generation counts on the UTC day it **completed** (Pixelforge's own `completed_at`), not the day it was created. Each day sits next to what `GET /v1/usage` reports for this key, with a match or difference badge. The Pixelforge column is a deferred prop, so the page renders straight away and a Pixelforge outage only blanks that column. A summary says whether the whole range matches Pixelforge to the nanodollar, a daily chart splits spend into provider cost and profit, and presets (today, last 7 or 30 days, this or last month) set the range.
 
 ## Balances (stretch goal)
 
-A balance is credits bought minus what finished generations cost, and "available" also subtracts what in-flight generations hold. "Buy credits" adds $5, $10 or $25 (fake: no payment is taken). Generating is blocked, with a clear message and a buy button, when the maximum cost doesn't fit.
+A balance is credits bought minus what finished generations cost, and "available" also subtracts what in-flight generations hold. "Buy credits" adds $5, $10 or $25 (fake: no payment is taken). Generating is blocked, with a clear message and a buy button, when the maximum cost doesn't fit. The [Credits page](app/Http/Controllers/CreditController.php) is the statement behind those numbers: one `UNION ALL` of purchases and generations, paginated.
 
 ## Decisions and trade-offs
 
 - **Reserve the maximum, not the estimate.** Users with a balance between the estimate and the maximum have to top up first. In exchange, the final charge always fits what was held, and simultaneous submissions can't overspend.
-- **Polling, not websockets.** The history page polls every 2 seconds, and only while something on it is still in flight. That's one cheap request with no extra infrastructure.
+- **Polling, not websockets.** The studio polls every 2 seconds, and only while one of the user's generations is in flight. That's one cheap request with no extra infrastructure.
 - **Images aren't stored.** Pixelforge's signed URLs expire after 24 hours; the card says so when they do.
 - **Email verification is off**, so reviewers can register and use the deployed app without a mail provider.
 - **Deleting an account keeps its generations** (the user is soft-deleted). They're billing records Pixelforge has too, and the report has to keep matching its usage.
