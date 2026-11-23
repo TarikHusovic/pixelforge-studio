@@ -11,9 +11,17 @@ export default defineConfig({
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.ts'],
             refresh: true,
+            // Self-hosted at build time. Atkinson Hyperlegible Next for the UI (built
+            // for legibility), Young Serif for display, Chivo Mono for money and tokens.
             fonts: [
-                bunny('Instrument Sans', {
-                    weights: [400, 500, 600],
+                bunny('Atkinson Hyperlegible Next', {
+                    weights: [400, 500, 600, 700],
+                    preload: [{ weight: 400 }, { weight: 600 }],
+                }),
+                bunny('Young Serif'),
+                bunny('Chivo Mono', {
+                    weights: [400, 500],
+                    preload: false,
                 }),
             ],
         }),
