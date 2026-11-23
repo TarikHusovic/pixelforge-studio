@@ -43,8 +43,8 @@ it('adds up billed generations per day of completion and per user', function () 
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('admin/Report')
             ->where('days', [
-                ['date' => '2026-11-22', 'generations' => 1, 'spend_nanos' => 50_000_000, 'provider_cost_nanos' => 40_000_000, 'profit_nanos' => 10_000_000],
                 ['date' => '2026-11-23', 'generations' => 2, 'spend_nanos' => 105_000_000, 'provider_cost_nanos' => 84_000_000, 'profit_nanos' => 21_000_000],
+                ['date' => '2026-11-22', 'generations' => 1, 'spend_nanos' => 50_000_000, 'provider_cost_nanos' => 40_000_000, 'profit_nanos' => 10_000_000],
             ])
             ->where('totals', ['generations' => 3, 'spend_nanos' => 155_000_000, 'provider_cost_nanos' => 124_000_000, 'profit_nanos' => 31_000_000])
             ->where('users', [
@@ -101,7 +101,8 @@ it('reports on a sane range whatever the query says', function (array $query, st
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('range', ['from' => $from, 'to' => $to])
             ->has('days', $days)
-            ->where('days.0.date', $from));
+            ->where('days.0.date', $to)
+            ->where('days.'.($days - 1).'.date', $from));
 })->with([
     'the last 30 days by default' => [[], '2026-10-25', '2026-11-23', 30],
     '30 days ending on the given day' => [['to' => '2026-06-30'], '2026-06-01', '2026-06-30', 30],

@@ -40,9 +40,9 @@ class ReportController extends Controller
             ->get()
             ->keyBy('day');
 
-        // Every day, zeros included, so the rows line up with Pixelforge's.
+        // Newest first, and every day, zeros included, so the rows line up with Pixelforge's.
         $days = [];
-        for ($day = $from; $day <= $to; $day = $day->addDay()) {
+        for ($day = $to; $day >= $from; $day = $day->subDay()) {
             $days[] = ['date' => $day->toDateString(), ...self::amounts($byDay->get($day->toDateString()))];
         }
 
