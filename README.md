@@ -69,6 +69,7 @@ A balance is credits bought minus what finished generations cost, and "available
 - **Images aren't stored.** Pixelforge's signed URLs expire after 24 hours; the card says so when they do.
 - **Email verification is off**, so reviewers can register and use the deployed app without a mail provider.
 - **Deleting an account keeps its generations** (the user is soft-deleted). They're billing records Pixelforge has too, and the report has to keep matching its usage.
+- **Starting generations and buying credits are limited to 10 a minute per user.** Credits are free here and every account shares one Pixelforge key and its daily quota, so this slows a runaway account down. It doesn't stop someone signing up many accounts; taking real payments would.
 - **Waiting for a free Pixelforge slot is first come, first served across all users.** A per-user cap on in-flight generations would stop one user from queueing ahead of everyone.
 
 ## What I'd do next

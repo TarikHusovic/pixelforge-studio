@@ -36,6 +36,20 @@ it('refuses amounts the button doesn\'t offer', function (mixed $amount) {
     'missing' => null,
 ]);
 
+it('slows down a user buying credits more than 10 times a minute', function () {
+    $user = User::factory()->create();
+
+    for ($i = 0; $i < 10; $i++) {
+        actingAs($user)->post(route('credit-purchases.store'), ['amount' => 5])->assertSessionHasNoErrors();
+    }
+
+    actingAs($user)->from(route('credits.index'))->post(route('credit-purchases.store'), ['amount' => 5])
+        ->assertRedirect(route('credits.index'))
+        ->assertInertiaFlash('toast', ['type' => 'error', 'message' => 'Too many requests at once. Please wait a minute and try again.']);
+
+    expect($user->creditPurchases()->count())->toBe(10);
+});
+
 it('doesn\'t sell credits to guests', function () {
     post(route('credit-purchases.store'), ['amount' => 10])->assertRedirect(route('login'));
 

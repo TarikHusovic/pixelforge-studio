@@ -198,6 +198,23 @@ it('tells the user to try again, instead of failing, when Pixelforge pricing is 
     expect(Generation::query()->count())->toBe(0);
 });
 
+it('slows down a user starting more than 10 generations a minute', function () {
+    fakePixelforgePricing();
+    $user = userWithCredits();
+
+    for ($i = 0; $i < 10; $i++) {
+        actingAs($user)->post(route('generations.store'), generationRequest())->assertSessionHasNoErrors();
+    }
+
+    actingAs($user)
+        ->from(route('generations.index'))
+        ->post(route('generations.store'), generationRequest())
+        ->assertRedirect(route('generations.index'))
+        ->assertInertiaFlash('toast', ['type' => 'error', 'message' => 'Too many requests at once. Please wait a minute and try again.']);
+
+    expect($user->generations()->count())->toBe(10);
+});
+
 it('keeps a deleted account\'s generations, so the books still match Pixelforge\'s', function () {
     $user = User::factory()->create();
     $generation = Generation::factory()->for($user)->succeeded()->create();
