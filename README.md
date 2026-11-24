@@ -18,7 +18,7 @@ Set `PIXELFORGE_API_KEY` and `PIXELFORGE_WEBHOOK_SECRET` in `.env`. Use a separa
 
 Make someone an operator (for the admin report) with `php artisan app:make-admin you@example.com`, or run `php artisan db:seed` for a local operator with $25 of credits (`test@example.com` / `password`).
 
-Checks: `composer test` (Pint, PHPStan level 7, Pest) and `npm run check && npm run types:check && npm run test:js` (the last one checks the browser's price quote against the same cases as the PHP tests).
+Checks: `composer test` (Pint, PHPStan level 7, Pest) and `npm run check && npm run types:check && npm run test:js` (the last one checks the browser's price quote against the same cases as the PHP tests). CI runs all of them, then the Pest suite again on Postgres 18, which production uses: SQLite accepts SQL that Postgres rejects, and skips row locks.
 
 ## How a generation flows
 
